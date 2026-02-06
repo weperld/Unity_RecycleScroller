@@ -1,0 +1,42 @@
+# Unity generated files
+Library/
+Temp/
+obj/
+Logs/
+*.log
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+
+# Rider
+.idea/
+*.sln.iml
+
+# Visual Studio
+.vs/
+
+# Build results
+[Dd]dps/
+[Dd]pe/
+[Dd]ps/
+[Dd]pi/
+[Dd]lps/
+
+# Unity3D generated meta files
+*.meta
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
