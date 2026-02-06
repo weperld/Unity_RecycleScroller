@@ -12,22 +12,25 @@ public class LoopScrollbarEditor : ScrollbarEditor
     private SerializedProperty m_onLoopValueChanged;
     private SerializedProperty m_onBeginDragged;
     private SerializedProperty m_onEndDragged;
-    
+
     private SerializedProperty m_loopScrollSettingFoldout;
     private SerializedProperty m_eventFoldout;
-    
+
     private GUIStyle m_boldFoldoutStyle;
     private GUIStyle m_boxStyle;
-    
+
     private GUIStyle boldFoldoutStyle
     {
         get
         {
             if (m_boldFoldoutStyle == null)
             {
-                m_boldFoldoutStyle = new GUIStyle(EditorStyles.foldout) { fontStyle = FontStyle.Bold };
+                m_boldFoldoutStyle = new GUIStyle(EditorStyles.foldout)
+                {
+                    fontStyle = FontStyle.Bold
+                };
             }
-            
+
             return m_boldFoldoutStyle;
         }
     }
@@ -37,13 +40,16 @@ public class LoopScrollbarEditor : ScrollbarEditor
         {
             if (m_boxStyle == null)
             {
-                m_boxStyle = new GUIStyle(GUI.skin.box) { padding = new RectOffset(20, 10, 10, 10) };
+                m_boxStyle = new GUIStyle(GUI.skin.box)
+                {
+                    padding = new RectOffset(20, 10, 10, 10)
+                };
             }
-            
+
             return m_boxStyle;
         }
     }
-    
+
     protected override void OnEnable()
     {
         // LoopScrollbar의 추가 필드가 있다면 여기서 프로퍼티를 가져옴
@@ -55,10 +61,10 @@ public class LoopScrollbarEditor : ScrollbarEditor
         m_onEndDragged = serializedObject.FindProperty("m_onEndDragged");
         m_loopScrollSettingFoldout = serializedObject.FindProperty("m_loopScrollSettingFoldout");
         m_eventFoldout = serializedObject.FindProperty("m_eventFoldout");
-        
+
         base.OnEnable();
     }
-    
+
     public override void OnInspectorGUI()
     {
         // 커스텀 헬프 박스를 그릴 위치와 메시지 설정
@@ -67,25 +73,25 @@ public class LoopScrollbarEditor : ScrollbarEditor
         MessageType messageType = MessageType.Info;
         Color textColor = Color.white;
         EditorDrawerHelper.DrawCustomHelpBox(helpBoxRect, helpMessage, messageType, textColor);
-        
+
         // 기본 Scrollbar의 인스펙터 UI를 그리기EditorGUILayout.Space();
         EditorGUILayout.LabelField("[Base Scrollbar Settings]", EditorStyles.boldLabel);
         base.OnInspectorGUI();
         serializedObject.Update();
-        
+
         // LoopScrollbar의 추가 필드를 인스펙터 UI에 추가
         EditorGUILayout.Space();
-        
+
         EditorGUILayout.BeginVertical(boxStyle);
         m_loopScrollSettingFoldout.boolValue = EditorGUILayout.Foldout(m_loopScrollSettingFoldout.boolValue, "[Loop Scrollbar Settings]", true, boldFoldoutStyle);
         if (m_loopScrollSettingFoldout.boolValue)
         {
             EditorGUI.indentLevel++;
             EditorGUILayout.PropertyField(m_graphics, new GUIContent("Target Graphics"));
-            
+
             EditorGUILayout.PropertyField(m_leftHandle, new GUIContent("Sub Handle 0"));
             EditorGUILayout.PropertyField(m_rightHandle, new GUIContent("Sub Handle 1"));
-            
+
             EditorGUILayout.Space();
             m_eventFoldout.boolValue = EditorGUILayout.Foldout(m_eventFoldout.boolValue, "[Loop Scrollbar Events]", true, boldFoldoutStyle);
             if (m_eventFoldout.boolValue)
@@ -94,12 +100,12 @@ public class LoopScrollbarEditor : ScrollbarEditor
                 EditorGUILayout.PropertyField(m_onBeginDragged, new GUIContent("On Begin Dragged"));
                 EditorGUILayout.PropertyField(m_onEndDragged, new GUIContent("On End Dragged"));
             }
-            
+
             EditorGUI.indentLevel--;
         }
-        
+
         EditorGUILayout.EndVertical();
-        
+
         // 기타 커스텀 설정이 필요하면 추가
         serializedObject.ApplyModifiedProperties();
     }
