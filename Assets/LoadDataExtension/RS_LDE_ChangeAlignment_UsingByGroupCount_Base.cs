@@ -21,7 +21,6 @@ namespace RecycleScroll
         public abstract bool IsSatisfied(int groupCount);
     }
 
-    [HelpBox("생성된 그룹데이터의 개수를 이용하여 조건에 만족하는 정렬 기준으로 덮어씌웁니다.", HelpBoxMessageType.Info)]
     [DisallowMultipleComponent]
     public abstract class RS_LDE_ChangeAlignment_UsingByGroupCount_Base<TConditionType> : LoadDataExtensionComponent
         where TConditionType : ConditionBase

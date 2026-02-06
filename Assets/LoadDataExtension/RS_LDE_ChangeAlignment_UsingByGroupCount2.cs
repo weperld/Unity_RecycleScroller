@@ -50,16 +50,12 @@ namespace RecycleScroll
         }
     }
 
-    [HelpBoxAuto(
-        "괄호/논리연산((), and, or) 등을 사용한 문자열 표현식으로 조건을 검사합니다.\n"
-        + "표현식의 기본 형태는 \"숫자 연산자\" 순서입니다. (예: 10 >, 20 ==)\n"
-        + "상세 내용은 노션을 참고해 주십시오.",
-        HelpBoxMessageType.Info)]
     public class RS_LDE_ChangeAlignment_UsingByGroupCount2 : RS_LDE_ChangeAlignment_UsingByGroupCount_Base<ConditionExpression>
     {
     }
 
     #region 간단한 문자열 파서 (괄호, and/or, 비교연산 지원)
+
     /// <summary>
     /// 문자열 식을 토큰(Token)으로 쪼갠 뒤,
     /// ( ) / and / or / < / <= / == / >= / > / 숫자 등을 해석하여
@@ -105,6 +101,7 @@ namespace RecycleScroll
         }
 
         #region Grammar (재귀 하향 파서)
+
         // Expression -> OrExpr
         // OrExpr -> AndExpr ("or" AndExpr)*   (왼쪽부터 순서대로 파싱)
         private INode ParseOrExpr()
@@ -177,9 +174,11 @@ namespace RecycleScroll
 
             return new ConditionNode(eqType, standardValue);
         }
+
         #endregion
 
         #region 내부 구현 (Token, 토큰화, 보조함수)
+
         private bool Match(TokenType type)
         {
             if (m_pos < m_tokens.Count && m_tokens[m_pos].m_type == type)
@@ -241,6 +240,7 @@ namespace RecycleScroll
 
             return string.Join(" ", list);
         }
+
         #endregion
     }
 
@@ -277,6 +277,7 @@ namespace RecycleScroll
     }
 
     #region 노드 계층 구조 (AST 트리, Evaluate)
+
     /// <summary>
     /// 모든 노드가 구현해야 할 인터페이스
     /// </summary>
@@ -347,6 +348,8 @@ namespace RecycleScroll
             return false;
         }
     }
+
     #endregion
+
     #endregion
 }
