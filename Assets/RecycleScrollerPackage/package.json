@@ -1,0 +1,36 @@
+{
+  "name": "com.tikitaka-studio.recyclescroller",
+  "version": "1.0.0",
+  "displayName": "Recycle Scroller",
+  "description": "High-performance cell recycling scroll view for Unity UI with loop scrolling, paging, and flexible grouping.",
+  "unity": "2022.3",
+  "keywords": [
+    "ui",
+    "scrollview",
+    "recycling",
+    "performance",
+    "virtualization",
+    "loop",
+    "pagination",
+    "scroll"
+  ],
+  "author": {
+    "name": "Tikitaka Studio",
+    "email": "contact@tikitaka-studio.com"
+  },
+  "dependencies": {
+    "com.cysharp.unitask": "2.5.0"
+  },
+  "samples": [
+    {
+      "displayName": "Basic Usage",
+      "description": "Basic RecycleScroller example",
+      "path": "Samples~/Examples/Basic"
+    },
+    {
+      "displayName": "Group Usage",
+      "description": "RecycleScroller with grouping",
+      "path": "Samples~/Examples/Group"
+    }
+  ]
+}
