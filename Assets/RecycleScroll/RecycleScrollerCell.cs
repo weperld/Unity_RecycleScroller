@@ -37,7 +37,7 @@ namespace RecycleScroll
         }
     }
     
-    public static class Extenstion_RecycleScrollerCell
+    public static class Extension_RecycleScrollerCell
     {
         public static TCell AddOrGetRSCell<TCell>(this GameObject gameObject) where TCell : RecycleScrollerCell
         {
