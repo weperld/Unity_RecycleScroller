@@ -224,7 +224,7 @@ namespace RecycleScroll
 
             try
             {
-                await m_loadDataTask;
+                await m_loadDataTask.Value;
             }
             catch (OperationCanceledException)
             {
@@ -632,7 +632,7 @@ namespace RecycleScroll
                     if (m_dic_ActivatedCells.ContainsKey(cellIndex) == false) continue;
 
                     var pushCell = m_dic_ActivatedCells[cellIndex];
-                    pushCell.OnBecameInvisible(this);
+                    pushCell.OnCellBecameInvisible(this);
                     onCellBecameInvisible?.Invoke(pushCell, cellIndex);
                     pushCellIndexList.Add(cellIndex);
                     PushIntoCellStack(pushCell);
@@ -693,7 +693,7 @@ namespace RecycleScroll
                         getCell.transform.SetParent(getGroup.transform);
                         getCell.transform.SetAsLastSibling();
 
-                        getCell.OnBecameVisible(this, j);
+                        getCell.OnCellBecameVisible(this, j);
                         onCellBecameVisible?.Invoke(getCell, j);
                     }
 

@@ -39,12 +39,12 @@ namespace RecycleScroll
         /// <summary>
         /// 셀이 풀에서 꺼내져 뷰포트에 배치될 때 호출
         /// </summary>
-        public virtual void OnBecameVisible(RecycleScroller scroller, int dataIndex) { }
+        public virtual void OnCellBecameVisible(RecycleScroller scroller, int dataIndex) { }
 
         /// <summary>
         /// 셀이 뷰포트에서 벗어나 풀로 반환될 때 호출
         /// </summary>
-        public virtual void OnBecameInvisible(RecycleScroller scroller) { }
+        public virtual void OnCellBecameInvisible(RecycleScroller scroller) { }
     }
     
     public static class Extension_RecycleScrollerCell
@@ -60,7 +60,7 @@ namespace RecycleScroll
             => gameObject.AddOrGetRSCell<RecycleScrollerCell>();
         
         public static TCell AddOrGetRSCell<TCell>(this Component component) where TCell : RecycleScrollerCell
-            => AddOrGetRSCell<TCell>(component.gameObject);
+            => component.gameObject.AddOrGetRSCell<TCell>();
         
         public static RecycleScrollerCell AddOrGetRSCell(this Component component)
             => component.AddOrGetRSCell<RecycleScrollerCell>();
