@@ -631,8 +631,11 @@ namespace RecycleScroll
                 {
                     if (m_dic_ActivatedCells.ContainsKey(cellIndex) == false) continue;
 
+                    var pushCell = m_dic_ActivatedCells[cellIndex];
+                    pushCell.OnBecameInvisible(this);
+                    onCellBecameInvisible?.Invoke(pushCell, cellIndex);
                     pushCellIndexList.Add(cellIndex);
-                    PushIntoCellStack(m_dic_ActivatedCells[cellIndex]);
+                    PushIntoCellStack(pushCell);
                 }
             }
 
@@ -689,6 +692,9 @@ namespace RecycleScroll
                         // 셀 오브젝트의 하이어라키 위치 설정
                         getCell.transform.SetParent(getGroup.transform);
                         getCell.transform.SetAsLastSibling();
+
+                        getCell.OnBecameVisible(this, j);
+                        onCellBecameVisible?.Invoke(getCell, j);
                     }
 
                     getCell.SetCellViewIndex(lastCellViewIndex);

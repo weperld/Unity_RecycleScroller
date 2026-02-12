@@ -35,6 +35,16 @@ namespace RecycleScroll
         {
             rectTransform.sizeDelta = size;
         }
+
+        /// <summary>
+        /// 셀이 풀에서 꺼내져 뷰포트에 배치될 때 호출
+        /// </summary>
+        public virtual void OnBecameVisible(RecycleScroller scroller, int dataIndex) { }
+
+        /// <summary>
+        /// 셀이 뷰포트에서 벗어나 풀로 반환될 때 호출
+        /// </summary>
+        public virtual void OnBecameInvisible(RecycleScroller scroller) { }
     }
     
     public static class Extension_RecycleScrollerCell

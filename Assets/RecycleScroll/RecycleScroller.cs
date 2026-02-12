@@ -393,6 +393,16 @@ namespace RecycleScroll
         public Action<eScrollDirection> onScrollDirectionChanged;
 
         /// <summary>
+        /// Call when a cell becomes visible (cell, dataIndex)
+        /// </summary>
+        public Action<RecycleScrollerCell, int> onCellBecameVisible;
+
+        /// <summary>
+        /// Call when a cell becomes invisible (cell, dataIndex)
+        /// </summary>
+        public Action<RecycleScrollerCell, int> onCellBecameInvisible;
+
+        /// <summary>
         /// 등록된 메소드가 없을 경우 기본 Instantiate 사용<para/>
         /// 입력 파라미터 RecycleScrollerCell은 prefab, DataIndex, Transform은 Parent가 될 RecycleScroller.transform
         /// </summary>
