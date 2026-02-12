@@ -1,0 +1,27 @@
+{
+  "name": "com.phjun.recyclescroller",
+  "version": "1.0.0",
+  "displayName": "Recycle Scroller",
+  "description": "High-performance recycling scroll system for Unity. Object Pooling based UGUI scroller.",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.unity.ugui": "1.0.0"
+  },
+  "keywords": [
+    "ui",
+    "scroll",
+    "recycler",
+    "pool",
+    "ugui"
+  ],
+  "author": {
+    "name": "phjun"
+  },
+  "samples": [
+    {
+      "displayName": "Basic Usage",
+      "description": "Basic usage sample scene",
+      "path": "Samples~/BasicUsage"
+    }
+  ]
+}
