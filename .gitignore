@@ -132,3 +132,10 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# Claude Dev Template - 임시/예시 파일
+_claude-template-temp/
+.guides/*.example.md
+
+# OMC state files
+.omc/
