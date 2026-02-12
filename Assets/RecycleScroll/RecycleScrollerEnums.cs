@@ -13,4 +13,10 @@ namespace RecycleScroll
         Constant__1,
         Custom
     }
+
+    public enum eScrollDirection
+    {
+        Forward,
+        Backward
+    }
 }

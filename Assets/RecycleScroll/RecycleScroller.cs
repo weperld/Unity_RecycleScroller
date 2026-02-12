@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using System.Threading;
-using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 
 namespace RecycleScroll
 {
@@ -221,6 +221,8 @@ namespace RecycleScroll
 
         public bool IsEasing => m_corMoveContent != null;
 
+        private float m_previousScrollPosition = 0f;
+
         #endregion
 
         #region Scroll Bar
@@ -269,6 +271,7 @@ namespace RecycleScroll
         // 아이템 오브젝트 풀
         private Dictionary<System.Type, Dictionary<string, Stack<RecycleScrollerCell>>> m_pool_Cells = new();
         public const string DEFAULT_POOL_SUBKEY = "DEFAULT_POOL_SUBKEY";
+        private const string TRASH_OBJECT_NAME = "[Trash]";
         private Stack<HorizontalOrVerticalLayoutGroup> m_pool_Groups = new();
 
         private Transform m_tf_CellPool;
@@ -342,8 +345,8 @@ namespace RecycleScroll
 
         private Coroutine m_corWaitForEndOfFrameAndLoadData;
         private CancellationTokenSource m_loadDataCancellationTokenSource;
-        private Task m_loadDataTask;
-        private TaskCompletionSource<bool> m_loadDataTaskCompletionSource;
+        private UniTask? m_loadDataTask;
+        private UniTaskCompletionSource<bool> m_loadDataTaskCompletionSource;
         private ulong m_loadDataAsyncCallID = ulong.MinValue;
 
         #endregion
@@ -385,12 +388,35 @@ namespace RecycleScroll
         public Action onEndEasing;
 
         /// <summary>
+        /// Call when scroll direction changed
+        /// </summary>
+        public Action<eScrollDirection> onScrollDirectionChanged;
+
+        /// <summary>
         /// 등록된 메소드가 없을 경우 기본 Instantiate 사용<para/>
         /// 입력 파라미터 RecycleScrollerCell은 prefab, DataIndex, Transform은 Parent가 될 RecycleScroller.transform
         /// </summary>
         public Func<RecycleScrollerCell, Transform, int, RecycleScrollerCell> CellCreateFuncWhenPoolEmpty;
 
         #endregion
+
+#if UNITY_EDITOR
+        public int Debug_ActiveCellCount => m_dic_ActivatedCells?.Count ?? 0;
+        public int Debug_ActiveGroupCount => m_dic_ActivatedGroups?.Count ?? 0;
+        public int Debug_PooledCellCount
+        {
+            get
+            {
+                if (m_pool_Cells == null) return 0;
+                int total = 0;
+                foreach (var typeDict in m_pool_Cells.Values)
+                    foreach (var stack in typeDict.Values)
+                        total += stack.Count;
+                return total;
+            }
+        }
+        public LoadDataProceedState Debug_LoadDataState => m_loadDataProceedState;
+#endif
 
         #region Unity Default Events
 

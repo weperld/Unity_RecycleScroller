@@ -4,7 +4,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace RecycleScroll
@@ -100,6 +99,7 @@ namespace RecycleScroll
             Init(_params);
             m_cellCount = 0;
             m_prevPageIndexByScrollPos = 0;
+            m_previousScrollPosition = 0f;
             ResetRealContentSize();
             ResetAllCellsAndGroups();
         }
@@ -113,7 +113,7 @@ namespace RecycleScroll
 
         private bool CheckActiveInHierarchy()
         {
-            if (gameObject.activeInHierarchy is false)
+            if (gameObject.activeInHierarchy == false)
             {
                 Debug.LogError("RecycleScroller.gameObject.activeInHierarchy is FALSE!!\t"
                     + "RecycleScroller의 기능이 온전히 작동하기 위해서는 오브젝트 활성화 여부 확인이 필요합니다!!");
@@ -135,7 +135,7 @@ namespace RecycleScroll
         private void LoadDataSyncInternal(LoadParam[] _params, LoadDataCallbacks callbacks)
         {
             StopAllPreviousLoadDataTask();
-            if (CheckActiveInHierarchy_WithNotify(callbacks) is false) return;
+            if (CheckActiveInHierarchy_WithNotify(callbacks) == false) return;
 
             StartCorWaitForEndOfFrameAndLoadData(_params, callbacks);
         }
@@ -191,14 +191,14 @@ namespace RecycleScroll
         #region For Async
         private async UniTaskVoid LoadDataAsyncInternal(LoadParam[] _params, LoadDataCallbacks loadDataCallbacks, ulong callID)
         {
-            if (CheckActiveInHierarchy_WithNotify(loadDataCallbacks) is false) return;
+            if (CheckActiveInHierarchy_WithNotify(loadDataCallbacks) == false) return;
 
             StopAllPreviousLoadDataTask();
 
             m_loadDataCancellationTokenSource = new CancellationTokenSource();
             var token = m_loadDataCancellationTokenSource.Token;
 
-            m_loadDataTaskCompletionSource = new TaskCompletionSource<bool>();
+            m_loadDataTaskCompletionSource = new UniTaskCompletionSource<bool>();
 
             try
             {
@@ -240,7 +240,7 @@ namespace RecycleScroll
             }
         }
 
-        private async Task CalculateAndUpdateObjectsAsync(LoadParam[] _params,
+        private async UniTask CalculateAndUpdateObjectsAsync(LoadParam[] _params,
             CancellationToken token,
             LoadDataCallbacks loadDataCallbacks,
             ulong callID)
@@ -260,7 +260,7 @@ namespace RecycleScroll
                 m_loadDataTaskCompletionSource?.TrySetResult(true);
             }
         }
-        private async Task CalculateScrollValuesOnLoadDataAsync(LoadParam[] _params, CancellationToken token, LoadDataCallbacks loadDataCallbacks,
+        private async UniTask CalculateScrollValuesOnLoadDataAsync(LoadParam[] _params, CancellationToken token, LoadDataCallbacks loadDataCallbacks,
             ulong callID)
         {
             // 콜렉션 초기화
@@ -298,12 +298,12 @@ namespace RecycleScroll
             return CheckContinuableLoadDataAsync(loadDataCallbacks, callID);
         }
 
-        private async Task CalculateTotalScrollSizeForAsync(int cellCount, CancellationToken token, float viewportSize)
+        private async UniTask CalculateTotalScrollSizeForAsync(int cellCount, CancellationToken token, float viewportSize)
         {
-            await Task.Run(() => CalculateTotalScrollSize(cellCount, m_maxGroupWidth, token, 0), token);
+            await UniTask.RunOnThreadPool(() => CalculateTotalScrollSize(cellCount, m_maxGroupWidth, token, 0), cancellationToken: token);
 
             AddEmptySpaceToLastGroupIfNeed();
-            await Task.Run(() => CheckLoop(viewportSize), token);
+            await UniTask.RunOnThreadPool(() => CheckLoop(viewportSize), cancellationToken: token);
         }
 
         private void TryCancelPreviousLoadDataAsyncTask()
@@ -711,7 +711,7 @@ namespace RecycleScroll
             if (TryAddWaitBuffer_AndCheckCurrentState(ReloadCellView, out _)) return;
 
             ResetAllCellsAndGroups();
-            if (del is null || del.GetCellCount(this) <= 0) return;
+            if (del == null || del.GetCellCount(this) <= 0) return;
             UpdateCellView();
         }
         #endregion
@@ -728,24 +728,24 @@ namespace RecycleScroll
             if (groupCount == 0) return (-1, -1);
 
             // 현재 범위에서 보여지는 셀 탐색
-            // 첫번째 셀은 셀의 크기를 이용해 셀의 끝 부분이 탐색 시작 위치에 걸쳐져 있는 지 확인이 필요함
-            // 마지막 셀은 셀의 위치를 이용해 셀의 시작 부분이 탐색 종료 위치에 걸쳐져 있는 지 확인이 필요함
-            // 즉, 셀의 끝 부분이 탐색 시작 위치보다 크거나 같고, 셀의 시작 부분이 탐색 종료 위치보다 작거나 같은 셀들을 찾아야 함
-            // 이를 이용해 보여지는 셀의 범위를 찾을 수 있음
-            var visibleGroups = m_dp_groupPos
-                .Select(
-                    (pos, index) => new
-                    {
-                        index,
-                        pos,
-                        endPos = pos + m_list_groupDatas[index].size
-                    })
-                .Where(x => x.endPos >= topBoundaryPos && x.pos <= bottomBoundaryPos)
-                .ToArray();
-            if (visibleGroups.Any() == false) return (-1, -1);
-
-            int firstIndex = visibleGroups.First().index;
-            int lastIndex = visibleGroups.Last().index;
+            // 셀의 끝 부분이 탐색 시작 위치보다 크거나 같고, 셀의 시작 부분이 탐색 종료 위치보다 작거나 같은 셀들을 찾아야 함
+            int firstIndex = -1;
+            int lastIndex = -1;
+            for (int i = 0; i < groupCount; i++)
+            {
+                var pos = m_dp_groupPos[i];
+                var endPos = pos + m_list_groupDatas[i].size;
+                if (endPos >= topBoundaryPos && pos <= bottomBoundaryPos)
+                {
+                    if (firstIndex == -1) firstIndex = i;
+                    lastIndex = i;
+                }
+                else if (firstIndex != -1)
+                {
+                    // 가시 영역은 연속된 범위이므로 조기 탈출
+                    break;
+                }
+            }
             return (firstIndex, lastIndex);
         }
 

@@ -65,5 +65,12 @@ namespace RecycleScroll
         [SerializeField] private bool m_loopScroll = false;
 
         #endregion
+
+        #region Pool Management
+
+        [Space(10f), ColoredHeader("[Pool Management]", ColorHexTemplate.CT_HEX_FFFF99)]
+        [SerializeField, Min(0)] private int m_maxPoolSizePerType = 100;
+
+        #endregion
     }
 }

@@ -41,7 +41,7 @@ namespace RecycleScroll
 
             LayoutRebuilder.ForceRebuildLayoutImmediate(rectTransform);
 
-            var inst = new GameObject("[[[쓰레기통]]]");
+            var inst = new GameObject(TRASH_OBJECT_NAME);
             inst.transform.SetParent(transform);
             var trash = inst.AddComponent<RectTransform>();
             trash.localScale = Vector3.one;
@@ -423,6 +423,16 @@ namespace RecycleScroll
             UpdateCellView();
             onScroll?.Invoke(val);
 
+            var currentPos = RealScrollPosition;
+            if (Mathf.Abs(currentPos - m_previousScrollPosition) > 0.01f)
+            {
+                var direction = currentPos > m_previousScrollPosition
+                    ? eScrollDirection.Forward
+                    : eScrollDirection.Backward;
+                onScrollDirectionChanged?.Invoke(direction);
+                m_previousScrollPosition = currentPos;
+            }
+
             var nearestPageIndex = NearestPageIndexByScrollPos;
             if (m_prevPageIndexByScrollPos != nearestPageIndex) ChangeCurrentPageIndex(nearestPageIndex);
         }
@@ -436,10 +446,15 @@ namespace RecycleScroll
             // subKeys배열이 비어있는 경우 디폴트 키 반환
             if (subKeys == null || subKeys.Length == 0) return DEFAULT_POOL_SUBKEY;
 
-            // 빈 문자열 제거
-            // '//'로 분류된 키들을 하나로 합침
-            subKeys = subKeys.Where(s => !string.IsNullOrEmpty(s)).ToArray();
-            return subKeys.Length == 0 ? DEFAULT_POOL_SUBKEY : string.Join("//", subKeys);
+            // 빈 문자열 제거 후 '//'로 합침
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < subKeys.Length; i++)
+            {
+                if (string.IsNullOrEmpty(subKeys[i])) continue;
+                if (sb.Length > 0) sb.Append("//");
+                sb.Append(subKeys[i]);
+            }
+            return sb.Length == 0 ? DEFAULT_POOL_SUBKEY : sb.ToString();
         }
 
         /// <summary>
@@ -514,8 +529,13 @@ namespace RecycleScroll
             cell.gameObject.SetActive(false);
             cell.transform.SetParent(Tf_CellPool);
 
-            var type = cell.GetType();
-            GetCellStack(type, cell.PoolSubKey).Push(cell);
+            var stack = GetCellStack(cell.GetType(), cell.PoolSubKey);
+            if (m_maxPoolSizePerType > 0 && stack.Count >= m_maxPoolSizePerType)
+            {
+                Destroy(cell.gameObject);
+                return;
+            }
+            stack.Push(cell);
         }
 
         #endregion
@@ -867,7 +887,7 @@ namespace RecycleScroll
 
         private void StartMoveContentCor(Func<IEnumerator> cor)
         {
-            if (gameObject.activeInHierarchy is false) return;
+            if (gameObject.activeInHierarchy == false) return;
             if (TryAddWaitBuffer_AndCheckCurrentState(() => StartMoveContentCor(cor), out _)) return;
 
             StopAllMoveCor();
@@ -1011,7 +1031,7 @@ namespace RecycleScroll
 
             var copyIndex = removeIndex;
             var copyCount = removeCount;
-            if (TryAddWaitBuffer_AndCheckCurrentState(() => Insert(copyIndex, copyCount), out _)) return;
+            if (TryAddWaitBuffer_AndCheckCurrentState(() => Remove(copyIndex, copyCount), out _)) return;
 
             // 삭제할 셀 수가 0 이하라면 삭제하지 않음
             if (removeCount <= 0) return;
@@ -1162,7 +1182,7 @@ namespace RecycleScroll
         private void StopCorWaitLoadDataStateToCompleteForBuffer()
         {
             m_loadDataWaitingActionBuffer.Clear();
-            if (IsWaitingLoadDataForActionBuffer is false) return;
+            if (IsWaitingLoadDataForActionBuffer == false) return;
 
             StopCoroutine(m_cor_loadDataWaitBuffer);
             m_cor_loadDataWaitBuffer = null;

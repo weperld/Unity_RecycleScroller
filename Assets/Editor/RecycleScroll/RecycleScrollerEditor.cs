@@ -33,6 +33,7 @@ public class RecycleScrollerEditor : Editor
     private SerializedProperty m_SpacingInGroup;
     private SerializedProperty m_PagingData;
     private SerializedProperty m_loopScroll;
+    private SerializedProperty m_maxPoolSizePerType;
     private SerializedProperty m_exampleLayoutGroups;
 
     void OnEnable()
@@ -54,6 +55,7 @@ public class RecycleScrollerEditor : Editor
         m_SpacingInGroup = serializedObject.FindProperty("m_SpacingInGroup");
         m_PagingData = serializedObject.FindProperty("m_PagingData");
         m_loopScroll = serializedObject.FindProperty("m_loopScroll");
+        m_maxPoolSizePerType = serializedObject.FindProperty("m_maxPoolSizePerType");
         m_exampleLayoutGroups = serializedObject.FindProperty("m_exampleLayoutGroups");
     }
 
@@ -148,9 +150,36 @@ public class RecycleScrollerEditor : Editor
         EditorGUILayout.PropertyField(m_loopScroll);
         EditorGUI.EndDisabledGroup();
 
+        // Pool Management
+        EditorGUI.BeginDisabledGroup(IsAppPlaying);
+        EditorGUILayout.PropertyField(m_maxPoolSizePerType, new GUIContent("Max Pool Size Per Type"));
+        EditorGUI.EndDisabledGroup();
+
         // Example Layout Groups (OnValidate)
         EditorGUILayout.PropertyField(m_exampleLayoutGroups);
 
         serializedObject.ApplyModifiedProperties();
+
+        // Debug Overlay (Play Mode Only)
+        if (Application.isPlaying)
+        {
+            EditorGUILayout.Space(10f);
+            EditorGUILayout.LabelField("[Debug Info]", EditorStyles.boldLabel);
+
+            EditorGUI.BeginDisabledGroup(true);
+            EditorGUILayout.IntField("Active Cells", scroller.Debug_ActiveCellCount);
+            EditorGUILayout.IntField("Active Groups", scroller.Debug_ActiveGroupCount);
+            EditorGUILayout.IntField("Pooled Cells", scroller.Debug_PooledCellCount);
+            EditorGUILayout.FloatField("Scroll Position", scroller.ShowingNormalizedScrollPosition);
+
+            var pageIndex = scroller.NearestPageIndexByScrollPos;
+            var pageCount = scroller.ShowingPageCount;
+            EditorGUILayout.TextField("Current Page", pageIndex >= 0 ? $"{pageIndex} / {pageCount}" : "N/A");
+
+            EditorGUILayout.EnumPopup("Load Data State", scroller.Debug_LoadDataState);
+            EditorGUI.EndDisabledGroup();
+
+            Repaint();
+        }
     }
 }
