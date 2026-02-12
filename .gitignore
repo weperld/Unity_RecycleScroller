@@ -139,3 +139,6 @@ _claude-template-temp/
 
 # OMC state files
 .omc/
+
+# Reports
+reports/
