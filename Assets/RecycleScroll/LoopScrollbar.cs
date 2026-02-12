@@ -63,7 +63,7 @@ namespace RecycleScroll
             set
             {
                 del = value;
-                if (del is null) return;
+                if (del == null) return;
 
                 UpdateSlideArea();
                 CreateHandles();
@@ -148,7 +148,7 @@ namespace RecycleScroll
         {
             if (Application.isPlaying == false) return;
 
-            if (Del is null)
+            if (Del == null)
             {
                 OnLoopValueChanged.Invoke(value, value);
                 return;
@@ -217,7 +217,7 @@ namespace RecycleScroll
 
         private void UpdateSlideArea()
         {
-            if (Del is null) return;
+            if (Del == null) return;
 
             var realSize = Del.RealSize;
             var showingSize = Del.ShowingSize;

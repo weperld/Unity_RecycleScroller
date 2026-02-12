@@ -144,7 +144,7 @@ namespace RecycleScroll
             set
             {
                 m_complete = value;
-                if (m_isInvoked is false || m_complete is null) return;
+                if (m_isInvoked == false || m_complete == null) return;
 
                 Internal_Invoke(m_result);
             }
