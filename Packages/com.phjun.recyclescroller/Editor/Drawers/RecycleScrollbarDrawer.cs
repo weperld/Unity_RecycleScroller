@@ -14,6 +14,12 @@ public class RecycleScrollbarEditor : SelectableEditor
     private SerializedProperty m_NumberOfSteps;
     private SerializedProperty m_OnValueChanged;
 
+    // Fixed Handle Size fields
+    private SerializedProperty m_useFixedHandleSize;
+    private SerializedProperty m_fixedHandleSizeMode;
+    private SerializedProperty m_fixedHandleRatio;
+    private SerializedProperty m_fixedHandlePixelSize;
+
     // Recycle Scrollbar fields
     private SerializedProperty m_leftHandle;
     private SerializedProperty m_rightHandle;
@@ -71,6 +77,12 @@ public class RecycleScrollbarEditor : SelectableEditor
         m_NumberOfSteps = serializedObject.FindProperty("m_NumberOfSteps");
         m_OnValueChanged = serializedObject.FindProperty("m_OnValueChanged");
 
+        // Fixed Handle Size fields
+        m_useFixedHandleSize = serializedObject.FindProperty("m_useFixedHandleSize");
+        m_fixedHandleSizeMode = serializedObject.FindProperty("m_fixedHandleSizeMode");
+        m_fixedHandleRatio = serializedObject.FindProperty("m_fixedHandleRatio");
+        m_fixedHandlePixelSize = serializedObject.FindProperty("m_fixedHandlePixelSize");
+
         // Recycle Scrollbar fields
         m_leftHandle = serializedObject.FindProperty("m_leftHandle");
         m_rightHandle = serializedObject.FindProperty("m_rightHandle");
@@ -107,6 +119,28 @@ public class RecycleScrollbarEditor : SelectableEditor
         EditorGUILayout.PropertyField(m_Value, new GUIContent("Value"));
         EditorGUILayout.PropertyField(m_Size, new GUIContent("Size"));
         EditorGUILayout.PropertyField(m_NumberOfSteps, new GUIContent("Number Of Steps"));
+
+        // Fixed Handle Size
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("[Fixed Handle Size]", EditorStyles.boldLabel);
+        EditorGUILayout.PropertyField(m_useFixedHandleSize, new GUIContent("Use Fixed Handle Size"));
+        if (m_useFixedHandleSize.boolValue)
+        {
+            EditorGUI.indentLevel++;
+            EditorDrawerHelper.DrawCustomHelpBox(
+                "핸들의 최소 사이즈를 보장합니다.\n"
+                + "자연 크기(viewport/content 비율)가 고정 크기보다 작을 때만 적용됩니다.",
+                MessageType.Info, Color.white);
+            EditorGUILayout.Space(2f);
+
+            EditorGUILayout.PropertyField(m_fixedHandleSizeMode, new GUIContent("Size Mode"));
+            if (m_fixedHandleSizeMode.enumValueIndex == (int)RecycleScrollbar.FixedHandleSizeMode.Ratio)
+                EditorGUILayout.PropertyField(m_fixedHandleRatio, new GUIContent("Min Ratio", "스크롤바 영역 대비 핸들 최소 비율 (0.01 ~ 1)"));
+            else
+                EditorGUILayout.PropertyField(m_fixedHandlePixelSize, new GUIContent("Min Pixel Size", "핸들 최소 픽셀 크기"));
+
+            EditorGUI.indentLevel--;
+        }
 
         EditorGUILayout.Space();
         EditorGUILayout.PropertyField(m_OnValueChanged, new GUIContent("On Value Changed (float)"));

@@ -27,6 +27,14 @@ namespace RecycleScroll
             TopToBottom,
         }
 
+        public enum FixedHandleSizeMode
+        {
+            /// <summary>스크롤바 영역 대비 비율로 핸들 최소 크기 지정</summary>
+            Ratio,
+            /// <summary>픽셀 단위로 핸들 최소 크기 지정</summary>
+            PixelSize,
+        }
+
         private enum Axis
         {
             Horizontal = 0,
@@ -66,6 +74,19 @@ namespace RecycleScroll
 
         [Space(6)]
         [SerializeField] private ScrollEvent m_OnValueChanged = new ScrollEvent();
+
+        #endregion
+
+        #region Serialized Fields - Fixed Handle Size
+
+        [SerializeField] private bool m_useFixedHandleSize = false;
+        [SerializeField] private FixedHandleSizeMode m_fixedHandleSizeMode = FixedHandleSizeMode.Ratio;
+
+        [Range(0.01f, 1f)]
+        [SerializeField] private float m_fixedHandleRatio = 0.1f;
+
+        [Min(1f)]
+        [SerializeField] private float m_fixedHandlePixelSize = 50f;
 
         #endregion
 
@@ -177,6 +198,32 @@ namespace RecycleScroll
         {
             get => m_OnValueChanged;
             set => m_OnValueChanged = value;
+        }
+
+        /// <summary>
+        /// 실제 화면에 표시되는 핸들 크기 비율.
+        /// 핸들 최소 사이즈 보장 기능이 켜져 있고, 고정 크기 비율 >= 자연 크기 비율(size)일 때만 고정 크기를 반환합니다.
+        /// 그 외에는 기존 size를 그대로 반환합니다.
+        /// </summary>
+        private float DisplaySize
+        {
+            get
+            {
+                if (!m_useFixedHandleSize) return size;
+
+                float fixedRatio = m_fixedHandleSizeMode switch
+                {
+                    FixedHandleSizeMode.Ratio => m_fixedHandleRatio,
+                    FixedHandleSizeMode.PixelSize => ScrollbarRectSize > 0f
+                        ? Mathf.Clamp01(m_fixedHandlePixelSize / ScrollbarRectSize)
+                        : size,
+                    _ => size,
+                };
+
+                // 고정 비율 >= 자연 비율일 때만 고정 크기 적용
+                // (자연 핸들이 고정 최소 크기보다 작을 때만 최소 크기 보장)
+                return fixedRatio >= size ? fixedRatio : size;
+            }
         }
 
         private float stepSize => (m_NumberOfSteps > 1) ? 1f / (m_NumberOfSteps - 1) : 0.1f;
@@ -396,16 +443,17 @@ namespace RecycleScroll
                 Vector2 anchorMin = Vector2.zero;
                 Vector2 anchorMax = Vector2.one;
 
-                float movement = Mathf.Clamp01(value) * (1 - size);
+                float displaySize = DisplaySize;
+                float movement = Mathf.Clamp01(value) * (1 - displaySize);
                 if (reverseValue)
                 {
-                    anchorMin[(int)axis] = 1 - movement - size;
+                    anchorMin[(int)axis] = 1 - movement - displaySize;
                     anchorMax[(int)axis] = 1 - movement;
                 }
                 else
                 {
                     anchorMin[(int)axis] = movement;
-                    anchorMax[(int)axis] = movement + size;
+                    anchorMax[(int)axis] = movement + displaySize;
                 }
 
                 m_HandleRect.anchorMin = anchorMin;
@@ -502,7 +550,7 @@ namespace RecycleScroll
             Vector2 handleCorner = handleCenterRelativeToContainerCorner - (m_HandleRect.rect.size - m_HandleRect.sizeDelta) * 0.5f;
 
             float parentSize = axis == Axis.Horizontal ? m_ContainerRect.rect.width : m_ContainerRect.rect.height;
-            float remainingSize = parentSize * (1 - size);
+            float remainingSize = parentSize * (1 - DisplaySize);
             if (remainingSize <= 0)
                 return;
 
@@ -557,7 +605,7 @@ namespace RecycleScroll
             if (reverseValue) axisDelta = -axisDelta;
 
             float parentSize = axis == Axis.Horizontal ? m_ContainerRect.rect.width : m_ContainerRect.rect.height;
-            float remainingSize = parentSize * (1 - size);
+            float remainingSize = parentSize * (1 - DisplaySize);
             if (remainingSize <= 0)
                 return;
 
