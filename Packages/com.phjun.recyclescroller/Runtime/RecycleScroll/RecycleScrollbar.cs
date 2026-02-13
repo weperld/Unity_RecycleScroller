@@ -255,13 +255,11 @@ namespace RecycleScroll
                 del = value;
                 if (del == null) return;
 
-                UpdateSlideArea();
                 CreateHandles();
             }
         }
 
         private RectTransform HandleContainerRect => handleRect?.parent as RectTransform;
-        private RectTransform LoopSlidingAreaRect => HandleContainerRect?.parent as RectTransform;
 
         private float ScrollbarRectSize => direction switch
         {
@@ -389,18 +387,28 @@ namespace RecycleScroll
         {
             if (!Application.isPlaying) return;
 
-            UpdateSlideArea();
             UpdateLoopHandles();
 
-            if (del == null)
+            if (del == null || !del.IsLoopScrollable)
             {
                 OnLoopValueChanged.Invoke(val, val);
                 return;
             }
 
-            var valueToRealSize = val * del.RealSize;
-            var normalizedShowingValue = del.ConvertRealToShow(valueToRealSize) / del.ShowingSize;
-            OnLoopValueChanged.Invoke(val, normalizedShowingValue);
+            // 루프 모드: val은 showing-normalized position
+            // OnLoopValueChanged(realNormalized, showingNormalized)
+            float showingScrollSize = del.ShowingSize - del.ViewportSize;
+            if (showingScrollSize <= 0f)
+            {
+                OnLoopValueChanged.Invoke(val, val);
+                return;
+            }
+
+            float showingPos = val * showingScrollSize;
+            float realPos = del.ConvertShowToReal(showingPos);
+            float realScrollSize = del.RealSize - del.ViewportSize;
+            float realNormalized = realScrollSize > 0f ? realPos / realScrollSize : 0f;
+            OnLoopValueChanged.Invoke(realNormalized, val);
         }
 
         public virtual void SetValueWithoutNotify(float input)
@@ -444,7 +452,23 @@ namespace RecycleScroll
                 Vector2 anchorMax = Vector2.one;
 
                 float displaySize = DisplaySize;
-                float movement = Mathf.Clamp01(value) * (1 - displaySize);
+
+                // 루프 모드: 핸들 이동 범위 계산에 자연 비율(viewport/content)을 사용.
+                // displaySize(고정 최소 크기 적용)로 계산하면 서브 핸들 오프셋(±ScrollbarRectSize)과
+                // 이동 범위가 불일치하여 wrap 경계에서 핸들이 점프함.
+                // naturalSize를 사용하면 value 범위 [0, content/scrollSize]가
+                // movement 범위 [0, 1.0]에 정확히 매핑되어 심리스 루프 달성.
+                float movementScale;
+                if (IsLoopMode && del != null)
+                {
+                    float naturalSize = del.ShowingSize > 0f ? del.ViewportSize / del.ShowingSize : displaySize;
+                    movementScale = 1f - naturalSize;
+                }
+                else
+                {
+                    movementScale = 1f - displaySize;
+                }
+                float movement = (IsLoopMode ? value : Mathf.Clamp01(value)) * movementScale;
                 if (reverseValue)
                 {
                     anchorMin[(int)axis] = 1 - movement - displaySize;
@@ -460,6 +484,7 @@ namespace RecycleScroll
                 m_HandleRect.anchorMax = anchorMax;
                 m_HandleRect.anchoredPosition = Vector2.zero;
                 m_HandleRect.sizeDelta = Vector2.zero;
+
             }
         }
 
@@ -520,7 +545,7 @@ namespace RecycleScroll
                 else
                     UpdateDrag(eventData);
             }
-            // UpdateSlideArea, UpdateLoopHandles는 Set() → UpdateLoopScrollState()에서 자동 호출
+            // UpdateLoopHandles는 Set() → UpdateLoopScrollState()에서 자동 호출
         }
 
         public void OnEndDrag(PointerEventData eventData)
@@ -612,10 +637,6 @@ namespace RecycleScroll
             float valueDelta = axisDelta / remainingSize;
             float newValue = m_Value + valueDelta;
 
-            // 루프 모드에서는 값을 wrapping (0~1 순환)
-            newValue %= 1f;
-            if (newValue < 0f) newValue += 1f;
-
             Set(newValue);
         }
 
@@ -652,12 +673,7 @@ namespace RecycleScroll
                         float change = axisCoordinate < 0 ? size : -size;
                         float newValue = value + (reverseValue ? change : -change);
 
-                        if (IsLoopMode)
-                        {
-                            newValue %= 1f;
-                            if (newValue < 0f) newValue += 1f;
-                        }
-                        else
+                        if (!IsLoopMode)
                         {
                             newValue = Mathf.Clamp01(newValue);
                             newValue = Mathf.Round(newValue * 10000f) / 10000f;
@@ -777,14 +793,8 @@ namespace RecycleScroll
 
         #region Loop Scrollbar - Set Value
 
-        public void SetValueForLoop(float input)
-        {
-            SetValueWithoutNotify(input);
-        }
-
         public void Refresh()
         {
-            UpdateSlideArea();
             UpdateLoopHandles();
             ResetSubHandlesPosition();
         }
@@ -799,14 +809,13 @@ namespace RecycleScroll
 
         #region Loop Scrollbar - Handle Updates
 
-        private void UpdateLoopHandles(float value, float size)
+        private void UpdateLoopHandles()
         {
+            if (handleRect == null) return;
             var rectSize = handleRect.rect.size;
             if (m_leftHandle) m_leftHandle.sizeDelta = rectSize;
             if (m_rightHandle) m_rightHandle.sizeDelta = rectSize;
         }
-
-        private void UpdateLoopHandles() => UpdateLoopHandles(value, size);
 
         private void ResetSubHandlePosition(RectTransform subHandle, bool isLeft)
         {
@@ -837,32 +846,6 @@ namespace RecycleScroll
         {
             ResetSubHandlePosition(m_leftHandle, true);
             ResetSubHandlePosition(m_rightHandle, false);
-        }
-
-        private void UpdateSlideArea()
-        {
-            if (Del == null) return;
-
-            var realSize = Del.RealSize;
-            var showingSize = Del.ShowingSize;
-            var normalized = realSize / showingSize;
-            if (float.IsNaN(normalized)) return;
-
-            var scrollRectSize = ScrollbarRectSize;
-            var realRectSize = scrollRectSize * normalized;
-            var diff = realRectSize - scrollRectSize;
-            var sizeDelta = LoopSlidingAreaRect.sizeDelta;
-            switch (direction)
-            {
-                case Direction.BottomToTop or Direction.TopToBottom:
-                    sizeDelta.y = diff;
-                    break;
-                case Direction.LeftToRight or Direction.RightToLeft:
-                    sizeDelta.x = diff;
-                    break;
-            }
-
-            LoopSlidingAreaRect.sizeDelta = sizeDelta;
         }
 
         private void CreateHandles()

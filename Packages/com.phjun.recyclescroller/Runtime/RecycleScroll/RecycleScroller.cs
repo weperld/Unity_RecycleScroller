@@ -210,7 +210,7 @@ namespace RecycleScroll
         /// </summary>
         public float ShowingNormalizedScrollPosition
         {
-            get => ShowingScrollPosition / ShowingScrollSize;
+            get => ShowingScrollSize > 0f ? ShowingScrollPosition / ShowingScrollSize : 0f;
             set => ShowingScrollPosition = value * ShowingScrollSize;
         }
         public float ShowingScrollPosition

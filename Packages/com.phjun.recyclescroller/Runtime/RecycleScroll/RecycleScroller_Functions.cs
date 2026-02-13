@@ -413,8 +413,9 @@ namespace RecycleScroll
                 var currentRealPos = RealScrollPosition;
                 if (currentRealPos < FrontThreshold || currentRealPos > RealScrollSize - BackThreshold)
                 {
-                    _ScrollRect.movementType = ScrollRect.MovementType.Unrestricted;
+                    var velocity = _ScrollRect.velocity;
                     ShowingScrollPosition = ShowingScrollPosition;
+                    _ScrollRect.velocity = velocity;
                 }
             }
 
@@ -1119,18 +1120,29 @@ namespace RecycleScroll
 
             _Scrollbar.SetSize(size);
         }
-        private void SetScrollbarSize() => SetScrollbarSize(ViewportSize / (m_loopScrollable ? RealContentSize : ShowingContentSize));
+        private void SetScrollbarSize() => SetScrollbarSize(ShowingContentSize > 0f ? ViewportSize / ShowingContentSize : 1f);
 
-        private void SetScrollbarValueWithoutNotify(float value)
+        private void SetScrollbarValueWithoutNotify()
         {
-            if (_Scrollbar == false) return;
+            if (_Scrollbar == null) return;
 
-            _Scrollbar.SetValueForLoop(value);
+            float normalizedPos;
+            if (m_loopScrollable)
+            {
+                // ShowingScrollSize가 0이면 (content <= viewport) NaN 방지
+                normalizedPos = ShowingScrollSize > 0f
+                    ? ShowingNormalizedScrollPosition
+                    : 0f;
+            }
+            else
+            {
+                normalizedPos = RealNormalizedScrollPosition;
+            }
+
+            _Scrollbar.SetValueWithoutNotify(ScrollAxis is eScrollAxis.VERTICAL
+                ? 1f - normalizedPos
+                : normalizedPos);
         }
-        private void SetScrollbarValueWithoutNotify() =>
-            SetScrollbarValueWithoutNotify(ScrollAxis is eScrollAxis.VERTICAL
-                ? 1f - RealNormalizedScrollPosition
-                : RealNormalizedScrollPosition);
 
         /// <summary>
         /// RecycleScrollbar의 onValueChanged 리스너.
@@ -1139,9 +1151,14 @@ namespace RecycleScroll
         /// </summary>
         private void OnScrollbarValueChanged(float scrollbarValue)
         {
-            RealNormalizedScrollPosition = ScrollAxis is eScrollAxis.VERTICAL
+            float normalizedValue = ScrollAxis is eScrollAxis.VERTICAL
                 ? 1f - scrollbarValue
                 : scrollbarValue;
+
+            if (m_loopScrollable)
+                ShowingNormalizedScrollPosition = normalizedValue;
+            else
+                RealNormalizedScrollPosition = normalizedValue;
         }
 
         /// <summary>
