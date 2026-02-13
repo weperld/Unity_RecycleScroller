@@ -6,33 +6,52 @@ Unity용 고성능 재활용 스크롤 시스템. Object Pooling 기반의 효�
 
 - **기술 스택**: C#, Unity 2022.3.62f2, UGUI, UniTask
 - **라이브러리**: UniTask (비동기 작업), TextMeshPro 3.0.9, Newtonsoft.Json 3.2.2, Unity UI (UGUI) 1.0.0
-- **출력 포맷**: Unity Package (.unitypackage), DLL Assembly
+- **출력 포맷**: UPM 패키지 (Git URL), Unity Package (.unitypackage)
 - **기능 카테고리**: ScrollCore, CellPooling, LoopScroll, Pagination, AsyncLoad, CellGrouping, EasingAnimation, EditorTools
 - **상세 정보**: PROJECT_SUMMARY.md 참조
 
 ### 프로젝트 구조
 
-Assets/
-├── RecycleScroll/           # 핵심 스크롤러 구현 (partial class)
-│   ├── RecycleScroller.cs            # 메인 컨트롤러
-│   ├── RecycleScroller_Functions.cs  # 기능 메서드
-│   ├── RecycleScroller_LoadData.cs   # 데이터 로드 로직
-│   ├── RecycleScroller_Inspector.cs  # 에디터 인스펙터
-│   ├── RecycleScrollerCell.cs        # 셀 기본 클래스
-│   ├── RecycleScrollerDatas.cs       # 데이터 구조
-│   ├── RecycleScrollerEnums.cs       # 열거형 정의
-│   ├── IRecycleScrollerDelegate.cs   # 델리게이트 인터페이스
-│   ├── EasingFunctions.cs            # 이징 함수
-│   └── LoopScrollbar.cs              # 루프 스크롤바
-├── Editor/                  # 에디터 도구 및 커스텀 드로어
-│   ├── Attributes/          # 속성 드로어
-│   ├── Drawers/             # 커스텀 프로퍼티 드로어
-│   ├── RecycleScroll/       # 스크롤러 에디터
-│   └── Creator/             # 스크롤뷰 생성 도구
-├── Attributes/              # 커스텀 속성 정의
-├── LoadDataExtension/       # 데이터 로드 확장
-├── SerializableDictionary/  # 직렬화 가능 딕셔너리
-└── Scenes/                  # 샘플 씬
+Packages/com.phjun.recyclescroller/   # UPM 패키지 루트
+├── package.json                       # 패키지 메타데이터 (v1.0.0)
+├── README.md                          # 설치 가이드
+├── LICENSE.md                         # MIT 라이선스
+├── CHANGELOG.md                       # 변경 이력
+├── Runtime/                           # 런타임 코드
+│   ├── RecycleScroller.Runtime.asmdef # 런타임 어셈블리 정의
+│   ├── RecycleScroll/                 # 핵심 스크롤러 (partial class)
+│   │   ├── RecycleScroller.cs         # 메인 컨트롤러
+│   │   ├── RecycleScroller_Functions.cs
+│   │   ├── RecycleScroller_LoadData.cs
+│   │   ├── RecycleScroller_LoadParam.cs
+│   │   ├── RecycleScroller_Inspector.cs
+│   │   ├── RecycleScroller_OnValidate.cs
+│   │   ├── RecycleScrollerCell.cs     # 셀 기본 클래스
+│   │   ├── RecycleScrollerDatas.cs    # 데이터 구조
+│   │   ├── RecycleScrollerEnums.cs    # 열거형 정의
+│   │   ├── RecycleScrollerHelper.cs   # 헬퍼 유틸리티
+│   │   ├── IRecycleScrollerDelegate.cs
+│   │   ├── ILoopScrollDelegate.cs
+│   │   ├── LoopScrollbar.cs           # 루프 스크롤바
+│   │   ├── EasingFunctions.cs         # 이징 함수
+│   │   ├── MathUtils.cs
+│   │   └── AddressableCellProvider.cs # Addressables 셀 로더
+│   ├── Attributes/                    # 커스텀 속성 정의
+│   ├── LoadDataExtension/             # 데이터 로드 확장
+│   ├── SerializableDictionary/        # 직렬화 가능 딕셔너리
+│   ├── CollectionUtils.cs
+│   ├── JsonHelper.cs
+│   └── EditorDrawerHelper_ConstValues.cs
+├── Editor/                            # 에디터 전용 코드
+│   ├── RecycleScroller.Editor.asmdef  # 에디터 어셈블리 정의
+│   ├── Attributes/                    # 속성 드로어
+│   ├── Drawers/                       # 커스텀 프로퍼티 드로어
+│   ├── RecycleScroll/                 # 스크롤러 에디터
+│   ├── Creator/                       # 스크롤뷰 생성 도구
+│   ├── LoadDataExtension/             # 확장 에디터
+│   └── SerializableDictionary/        # 딕셔너리 에디터
+└── Samples~/                          # 샘플 (컴파일 제외)
+    └── BasicUsage/Scenes/             # 샘플 씬
 
 ### Unity 스크롤러 규칙
 - **Object Pooling 필수**: 셀은 항상 재활용, 매번 새로 생성하지 않음
