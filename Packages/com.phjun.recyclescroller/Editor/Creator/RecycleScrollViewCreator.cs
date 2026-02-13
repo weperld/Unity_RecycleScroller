@@ -5,19 +5,19 @@ using UnityEngine.UI;
 public class RecycleScrollViewCreator : MonoBehaviour
 {
     private const string MENU_PATH = "GameObject/UI/RecycleScroll/";
-    private const string FOLDER_PATH = "Assets/ManagedAssets/AdressAssets/UIs/Prefabs/Commons/RecycleScroll/";
+    private const string FOLDER_PATH = "Packages/com.phjun.recyclescroller/Runtime/Prefabs/";
 
     [MenuItem(MENU_PATH + "Recycle Scroll View", false)]
     private static void CreateRecycleScrollView(MenuCommand menuCommand)
-        => Create(menuCommand, "Recycle_Scroll_View.prefab", "Recycle Scroll View");
+        => Create(menuCommand, "Recycle Scroll View.prefab", "Recycle Scroll View");
 
-    [MenuItem(MENU_PATH + "Loop Scrollbar (Vertical)", false)]
-    private static void CreateLoopScrollbarVertical(MenuCommand menuCommand)
-        => Create(menuCommand, "Loop_Scrollbar_Vertical.prefab", "Loop Scrollbar Vertical");
+    [MenuItem(MENU_PATH + "Recycle Scrollbar (Vertical)", false)]
+    private static void CreateRecycleScrollbarVertical(MenuCommand menuCommand)
+        => Create(menuCommand, "Recycle Scrollbar - Vertical.prefab", "Recycle Scrollbar Vertical");
 
-    [MenuItem(MENU_PATH + "Loop Scrollbar (Horizontal)", false)]
-    private static void CreateLoopScrollbarHorizontal(MenuCommand menuCommand)
-        => Create(menuCommand, "Loop_Scrollbar_Horizontal.prefab", "Loop Scrollbar Horizontal");
+    [MenuItem(MENU_PATH + "Recycle Scrollbar (Horizontal)", false)]
+    private static void CreateRecycleScrollbarHorizontal(MenuCommand menuCommand)
+        => Create(menuCommand, "Recycle Scrollbar - Horizontal.prefab", "Recycle Scrollbar Horizontal");
 
 
     private static GameObject FindOrCreateCanvas_ReturnParent(GameObject selectedObj)

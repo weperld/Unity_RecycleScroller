@@ -33,6 +33,7 @@ public class RecycleScrollerEditor : Editor
     private SerializedProperty m_SpacingInGroup;
     private SerializedProperty m_PagingData;
     private SerializedProperty m_loopScroll;
+    private SerializedProperty m_ScrollbarRef;
     private SerializedProperty m_maxPoolSizePerType;
     private SerializedProperty m_exampleLayoutGroups;
 
@@ -55,6 +56,7 @@ public class RecycleScrollerEditor : Editor
         m_SpacingInGroup = serializedObject.FindProperty("m_SpacingInGroup");
         m_PagingData = serializedObject.FindProperty("m_PagingData");
         m_loopScroll = serializedObject.FindProperty("m_loopScroll");
+        m_ScrollbarRef = serializedObject.FindProperty("m_ScrollbarRef");
         m_maxPoolSizePerType = serializedObject.FindProperty("m_maxPoolSizePerType");
         m_exampleLayoutGroups = serializedObject.FindProperty("m_exampleLayoutGroups");
     }
@@ -148,6 +150,11 @@ public class RecycleScrollerEditor : Editor
         // Loop Scroll
         EditorGUI.BeginDisabledGroup(IsAppPlaying);
         EditorGUILayout.PropertyField(m_loopScroll);
+        EditorGUILayout.PropertyField(m_ScrollbarRef, new GUIContent("Recycle Scrollbar"));
+        EditorDrawerHelper.DrawCustomHelpBox(
+            "Recycle Scrollbar: 주축(셀 재활용 방향) 전용 스크롤바\n"
+            + "보조축(그룹 내 셀 배치 방향) 스크롤이 필요한 경우 ScrollRect의 기본 Scrollbar를 사용하세요",
+            MessageType.Info, Color.white);
         EditorGUI.EndDisabledGroup();
 
         // Pool Management

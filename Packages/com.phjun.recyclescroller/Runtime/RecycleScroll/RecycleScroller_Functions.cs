@@ -1098,14 +1098,14 @@ namespace RecycleScroll
 
         #region Scrollbar
 
-        private void AddDragEventToScrollbar(LoopScrollbar scrollbar)
+        private void AddDragEventToScrollbar(RecycleScrollbar scrollbar)
         {
             if (scrollbar == false) return;
 
             scrollbar.OnBeginDragged.AddListener(OnBeginDragForScrollbar);
             scrollbar.OnEndDragged.AddListener(OnEndDragForScrollbar);
         }
-        private void RemoveDragEventAtScrollbar(LoopScrollbar scrollbar)
+        private void RemoveDragEventAtScrollbar(RecycleScrollbar scrollbar)
         {
             if (scrollbar == false) return;
 
@@ -1115,22 +1115,53 @@ namespace RecycleScroll
 
         private void SetScrollbarSize(float size)
         {
-            if (_LoopScrollbar == null) return;
+            if (_Scrollbar == null) return;
 
-            _LoopScrollbar.SetSize(size);
+            _Scrollbar.SetSize(size);
         }
         private void SetScrollbarSize() => SetScrollbarSize(ViewportSize / (m_loopScrollable ? RealContentSize : ShowingContentSize));
 
         private void SetScrollbarValueWithoutNotify(float value)
         {
-            if (_LoopScrollbar == false) return;
+            if (_Scrollbar == false) return;
 
-            _LoopScrollbar.SetValueForLoop(value);
+            _Scrollbar.SetValueForLoop(value);
         }
         private void SetScrollbarValueWithoutNotify() =>
             SetScrollbarValueWithoutNotify(ScrollAxis is eScrollAxis.VERTICAL
                 ? 1f - RealNormalizedScrollPosition
                 : RealNormalizedScrollPosition);
+
+        /// <summary>
+        /// RecycleScrollbar의 onValueChanged 리스너.
+        /// 사용자가 스크롤바를 드래그할 때 value 변경을 RecycleScroller의 스크롤 위치에 반영합니다.
+        /// SetScrollbarValueWithoutNotify는 sendCallback=false로 호출하므로 이 리스너가 재진입하지 않습니다.
+        /// </summary>
+        private void OnScrollbarValueChanged(float scrollbarValue)
+        {
+            RealNormalizedScrollPosition = ScrollAxis is eScrollAxis.VERTICAL
+                ? 1f - scrollbarValue
+                : scrollbarValue;
+        }
+
+        /// <summary>
+        /// RecycleScrollbar가 더 이상 Scrollbar를 상속하지 않으므로,
+        /// ScrollRect의 scrollbar 바인딩을 해제하여 간섭을 방지합니다.
+        /// </summary>
+        private void NullifyScrollRectScrollbar()
+        {
+            switch (ScrollAxis)
+            {
+                case eScrollAxis.VERTICAL:
+                    if (_ScrollRect.verticalScrollbar != null)
+                        _ScrollRect.verticalScrollbar = null;
+                    break;
+                case eScrollAxis.HORIZONTAL:
+                    if (_ScrollRect.horizontalScrollbar != null)
+                        _ScrollRect.horizontalScrollbar = null;
+                    break;
+            }
+        }
 
         private void OnBeginDragForScrollbar(PointerEventData _)
         {

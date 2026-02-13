@@ -63,6 +63,7 @@ namespace RecycleScroll
             + "Scroll Rect의 MovementType이 Unrestricted로 변경됩니다",
             hexColor: ColorHexTemplate.CT_HEX_FF3333)]
         [SerializeField] private bool m_loopScroll = false;
+        [SerializeField] private RecycleScrollbar m_ScrollbarRef;
 
         #endregion
 

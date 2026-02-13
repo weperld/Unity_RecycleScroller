@@ -1,6 +1,6 @@
 namespace RecycleScroll
 {
-    public interface ILoopScrollDelegate
+    public interface IRecycleScrollbarDelegate
     {
         public bool LoopScrollIsOn { get; }
         public bool IsLoopScrollable { get; }

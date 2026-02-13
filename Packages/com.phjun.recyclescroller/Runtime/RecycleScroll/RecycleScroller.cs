@@ -12,7 +12,7 @@ namespace RecycleScroll
     [RequireComponent(typeof(ScrollRect))]
     [DisallowMultipleComponent]
     [AddComponentMenu("UI/Recycle Scroll/Recycle Scroller")]
-    public partial class RecycleScroller : MonoBehaviour, IBeginDragHandler, IEndDragHandler, ILoopScrollDelegate
+    public partial class RecycleScroller : MonoBehaviour, IBeginDragHandler, IEndDragHandler, IRecycleScrollbarDelegate
     {
         #region Fields
 
@@ -227,32 +227,28 @@ namespace RecycleScroll
 
         #region Scroll Bar
 
-        private LoopScrollbar m_loopScrollbar = null;
-        private LoopScrollbar _LoopScrollbar
+        private RecycleScrollbar m_scrollbar = null;
+        private RecycleScrollbar _Scrollbar
         {
             get
             {
-                var temp = ScrollAxis switch
+                if (m_scrollbar)
                 {
-                    eScrollAxis.VERTICAL => _ScrollRect.verticalScrollbar as LoopScrollbar,
-                    eScrollAxis.HORIZONTAL => _ScrollRect.horizontalScrollbar as LoopScrollbar,
-                    _ => null,
-                };
-
-                if (m_loopScrollbar)
-                {
-                    if (m_loopScrollbar == temp) return m_loopScrollbar;
-                    RemoveDragEventAtScrollbar(m_loopScrollbar);
+                    if (m_scrollbar == m_ScrollbarRef) return m_scrollbar;
+                    RemoveDragEventAtScrollbar(m_scrollbar);
+                    m_scrollbar.onValueChanged.RemoveListener(OnScrollbarValueChanged);
                 }
 
-                m_loopScrollbar = temp;
-                if (m_loopScrollbar)
+                m_scrollbar = m_ScrollbarRef;
+                if (m_scrollbar)
                 {
-                    m_loopScrollbar.Del = this;
-                    AddDragEventToScrollbar(m_loopScrollbar);
+                    m_scrollbar.Del = this;
+                    AddDragEventToScrollbar(m_scrollbar);
+                    m_scrollbar.onValueChanged.AddListener(OnScrollbarValueChanged);
+                    NullifyScrollRectScrollbar();
                 }
 
-                return m_loopScrollbar;
+                return m_scrollbar;
             }
         }
 

@@ -3,9 +3,18 @@ using UnityEditor;
 using UnityEditor.UI;
 using UnityEngine;
 
-[CustomEditor(typeof(LoopScrollbar))]
-public class LoopScrollbarEditor : ScrollbarEditor
+[CustomEditor(typeof(RecycleScrollbar))]
+public class RecycleScrollbarEditor : SelectableEditor
 {
+    // Core Scrollbar fields
+    private SerializedProperty m_HandleRect;
+    private SerializedProperty m_Direction;
+    private SerializedProperty m_Value;
+    private SerializedProperty m_Size;
+    private SerializedProperty m_NumberOfSteps;
+    private SerializedProperty m_OnValueChanged;
+
+    // Recycle Scrollbar fields
     private SerializedProperty m_leftHandle;
     private SerializedProperty m_rightHandle;
     private SerializedProperty m_graphics;
@@ -52,7 +61,17 @@ public class LoopScrollbarEditor : ScrollbarEditor
 
     protected override void OnEnable()
     {
-        // LoopScrollbar의 추가 필드가 있다면 여기서 프로퍼티를 가져옴
+        base.OnEnable();
+
+        // Core Scrollbar fields
+        m_HandleRect = serializedObject.FindProperty("m_HandleRect");
+        m_Direction = serializedObject.FindProperty("m_Direction");
+        m_Value = serializedObject.FindProperty("m_Value");
+        m_Size = serializedObject.FindProperty("m_Size");
+        m_NumberOfSteps = serializedObject.FindProperty("m_NumberOfSteps");
+        m_OnValueChanged = serializedObject.FindProperty("m_OnValueChanged");
+
+        // Recycle Scrollbar fields
         m_leftHandle = serializedObject.FindProperty("m_leftHandle");
         m_rightHandle = serializedObject.FindProperty("m_rightHandle");
         m_graphics = serializedObject.FindProperty("m_graphics");
@@ -61,39 +80,59 @@ public class LoopScrollbarEditor : ScrollbarEditor
         m_onEndDragged = serializedObject.FindProperty("m_onEndDragged");
         m_loopScrollSettingFoldout = serializedObject.FindProperty("m_loopScrollSettingFoldout");
         m_eventFoldout = serializedObject.FindProperty("m_eventFoldout");
-
-        base.OnEnable();
     }
 
     public override void OnInspectorGUI()
     {
-        // 커스텀 헬프 박스를 그릴 위치와 메시지 설정
-        Rect helpBoxRect = GUILayoutUtility.GetRect(0, 40, GUILayout.ExpandWidth(true));
-        string helpMessage = "온전한 작동을 위해 Sliding Area와 Handle의 Left,Right,Top,Bottom을 0으로 설정하고, LoopScrollbar의 OnValueChangeSelf가 등록되어 있어야 합니다.";
+        // 헬프 박스
+        Rect helpBoxRect = GUILayoutUtility.GetRect(0, 30, GUILayout.ExpandWidth(true));
+        string helpMessage = "Sliding Area/Handle 오프셋과 루프 상태 업데이트가 자동으로 관리됩니다.";
         MessageType messageType = MessageType.Info;
         Color textColor = Color.white;
         EditorDrawerHelper.DrawCustomHelpBox(helpBoxRect, helpMessage, messageType, textColor);
 
-        // 기본 Scrollbar의 인스펙터 UI를 그리기EditorGUILayout.Space();
-        EditorGUILayout.LabelField("[Base Scrollbar Settings]", EditorStyles.boldLabel);
+        // Selectable 기본 인스펙터 (Interactable, Transition, Colors 등)
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("[Selectable Settings]", EditorStyles.boldLabel);
         base.OnInspectorGUI();
+
         serializedObject.Update();
 
-        // LoopScrollbar의 추가 필드를 인스펙터 UI에 추가
+        // Core Scrollbar 필드
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("[Scrollbar Settings]", EditorStyles.boldLabel);
+
+        EditorGUILayout.PropertyField(m_HandleRect, new GUIContent("Handle Rect"));
+        EditorGUILayout.PropertyField(m_Direction, new GUIContent("Direction"));
+        EditorGUILayout.PropertyField(m_Value, new GUIContent("Value"));
+        EditorGUILayout.PropertyField(m_Size, new GUIContent("Size"));
+        EditorGUILayout.PropertyField(m_NumberOfSteps, new GUIContent("Number Of Steps"));
+
+        EditorGUILayout.Space();
+        EditorGUILayout.PropertyField(m_OnValueChanged, new GUIContent("On Value Changed (float)"));
+
+        // Recycle Scrollbar 필드
         EditorGUILayout.Space();
 
         EditorGUILayout.BeginVertical(boxStyle);
-        m_loopScrollSettingFoldout.boolValue = EditorGUILayout.Foldout(m_loopScrollSettingFoldout.boolValue, "[Loop Scrollbar Settings]", true, boldFoldoutStyle);
+        m_loopScrollSettingFoldout.boolValue = EditorGUILayout.Foldout(m_loopScrollSettingFoldout.boolValue, "[Recycle Scrollbar Settings]", true, boldFoldoutStyle);
         if (m_loopScrollSettingFoldout.boolValue)
         {
             EditorGUI.indentLevel++;
+
+            EditorDrawerHelper.DrawCustomHelpBox(
+                "Target Graphics: Selectable 상태 전환(Color Tint/Sprite Swap) 대상 그래픽\n"
+                + "Sub Handle 0/1: 루프 스크롤 시 핸들 양쪽에 표시되는 보조 핸들 (자동 생성)",
+                MessageType.Info, Color.white);
+            EditorGUILayout.Space(2f);
+
             EditorGUILayout.PropertyField(m_graphics, new GUIContent("Target Graphics"));
 
             EditorGUILayout.PropertyField(m_leftHandle, new GUIContent("Sub Handle 0"));
             EditorGUILayout.PropertyField(m_rightHandle, new GUIContent("Sub Handle 1"));
 
             EditorGUILayout.Space();
-            m_eventFoldout.boolValue = EditorGUILayout.Foldout(m_eventFoldout.boolValue, "[Loop Scrollbar Events]", true, boldFoldoutStyle);
+            m_eventFoldout.boolValue = EditorGUILayout.Foldout(m_eventFoldout.boolValue, "[Recycle Scrollbar Events]", true, boldFoldoutStyle);
             if (m_eventFoldout.boolValue)
             {
                 EditorGUILayout.PropertyField(m_onLoopValueChanged, new GUIContent("On Loop Value Changed"));
@@ -106,7 +145,6 @@ public class LoopScrollbarEditor : ScrollbarEditor
 
         EditorGUILayout.EndVertical();
 
-        // 기타 커스텀 설정이 필요하면 추가
         serializedObject.ApplyModifiedProperties();
     }
 }
