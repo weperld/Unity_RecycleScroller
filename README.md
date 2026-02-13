@@ -25,13 +25,28 @@ Unity용 고성능 재활용 스크롤 시스템입니다. Object Pooling 기반
 
 ## 설치
 
+### UPM (Unity Package Manager) - 권장
+
+Unity Editor에서 `Window > Package Manager > + > Add package from git URL...`에 아래 URL을 입력하세요:
+
+```
+https://github.com/weperld/Unity_RecycleScroller.git?path=Packages/com.phjun.recyclescroller
+```
+
+또는 `Packages/manifest.json`에 직접 추가할 수도 있습니다:
+
+```json
+{
+  "dependencies": {
+    "com.phjun.recyclescroller": "https://github.com/weperld/Unity_RecycleScroller.git?path=Packages/com.phjun.recyclescroller"
+  }
+}
+```
+
+### 수동 설치
+
 1. 이 저장소를 클론하거나 다운로드합니다
-2. Unity 프로젝트에 다음 폴더를 복사합니다:
-   - `Assets/RecycleScroll/` (핵심 스크롤러)
-   - `Assets/Editor/` (에디터 도구)
-   - `Assets/Attributes/` (커스텀 속성)
-   - `Assets/LoadDataExtension/` (데이터 로드 확장, 선택)
-   - `Assets/SerializableDictionary/` (직렬화 딕셔너리, 선택)
+2. `Packages/com.phjun.recyclescroller/` 폴더를 프로젝트의 `Packages/` 디렉토리에 복사합니다
 3. UniTask 패키지가 설치되어 있는지 확인합니다
 
 ## 프로젝트 구조
