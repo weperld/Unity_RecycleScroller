@@ -123,6 +123,7 @@ GameObject:
   - component: {fileID: 8096764833788659005}
   - component: {fileID: 7920204113939560897}
   - component: {fileID: 4363975702889574806}
+  - component: {fileID: 2510951003853726851}
   m_Layer: 5
   m_Name: Recycle Scrollbar - Vertical
   m_TagString: Untagged
@@ -237,6 +238,10 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
+  m_useFixedHandleSize: 0
+  m_fixedHandleSizeMode: 0
+  m_fixedHandleRatio: 0.1
+  m_fixedHandlePixelSize: 50
   m_onLoopValueChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -251,3 +256,16 @@ MonoBehaviour:
   m_graphics: []
   m_loopScrollSettingFoldout: 1
   m_eventFoldout: 1
+--- !u!114 &2510951003853726851
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7456305976420947117}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31a19414c41e5ae4aae2af33fee712f6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_ShowMaskGraphic: 1
