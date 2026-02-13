@@ -49,30 +49,38 @@
 ## 핵심 파일 구조
 
 ```
-Assets/
-├── RecycleScroll/           # 핵심 스크롤러 (partial class)
-│   ├── RecycleScroller.cs            # 메인 컨트롤러
-│   ├── RecycleScroller_Functions.cs  # 기능 메서드
-│   ├── RecycleScroller_LoadData.cs   # 데이터 로드
-│   ├── RecycleScrollerCell.cs        # 셀 기본 클래스
-│   ├── RecycleScrollerDatas.cs       # 데이터 구조
-│   ├── IRecycleScrollerDelegate.cs   # 델리게이트 인터페이스
-│   └── EasingFunctions.cs           # 이징 함수
-│
-├── Editor/                  # 에디터 도구
-│   ├── Attributes/          # 속성 드로어
-│   ├── Drawers/             # 커스텀 프로퍼티 드로어
-│   └── Creator/             # 스크롤뷰 생성 도구
-│
-├── Attributes/              # 커스텀 속성 정의
-├── LoadDataExtension/       # 데이터 로드 확장
-├── SerializableDictionary/  # 직렬화 가능 딕셔너리
-│
-└── .guides/                 # 에이전트 가이드
-    ├── BUILD_GUIDE.md
-    ├── CODE_STYLE.md
-    ├── TECHNICAL_RULES.md
-    └── TEST_GUIDE.md
+Packages/com.phjun.recyclescroller/   # UPM 패키지 루트
+├── package.json                       # 패키지 메타데이터 (v1.0.0)
+├── README.md / LICENSE.md / CHANGELOG.md
+├── Runtime/                           # 런타임 코드
+│   ├── RecycleScroller.Runtime.asmdef
+│   ├── RecycleScroll/                 # 핵심 스크롤러 (partial class)
+│   │   ├── RecycleScroller.cs         # 메인 컨트롤러
+│   │   ├── RecycleScroller_Functions.cs
+│   │   ├── RecycleScroller_LoadData.cs
+│   │   ├── RecycleScrollerCell.cs     # 셀 기본 클래스
+│   │   ├── RecycleScrollerDatas.cs    # 데이터 구조
+│   │   ├── IRecycleScrollerDelegate.cs
+│   │   ├── EasingFunctions.cs         # 이징 함수
+│   │   └── AddressableCellProvider.cs # Addressables 셀 로더
+│   ├── Attributes/                    # 커스텀 속성 정의
+│   ├── LoadDataExtension/             # 데이터 로드 확장
+│   └── SerializableDictionary/        # 직렬화 가능 딕셔너리
+├── Editor/                            # 에디터 전용 코드
+│   ├── RecycleScroller.Editor.asmdef
+│   ├── Attributes/                    # 속성 드로어
+│   ├── Drawers/                       # 커스텀 프로퍼티 드로어
+│   ├── Creator/                       # 스크롤뷰 생성 도구
+│   └── SerializableDictionary/        # 딕셔너리 에디터
+└── Samples~/                          # 샘플 (컴파일 제외)
+    └── BasicUsage/Scenes/
+
+.guides/                               # 에이전트 가이드
+├── BUILD_GUIDE.md
+├── CODE_STYLE.md
+├── TECHNICAL_RULES.md
+├── TEST_GUIDE.md
+└── VERIFICATION_ITEMS.md              # 검증 항목 (문제 기반 축적)
 ```
 
 ---
@@ -100,7 +108,7 @@ Unity Editor > File > Build Settings > Build
 ### 실행
 ```
 Unity Editor Play Mode (Ctrl+P)
-샘플 씬: Assets/Scenes/SampleScene.unity
+샘플 씬: Package Manager > Recycle Scroller > Samples > BasicUsage > Import
 ```
 
 ### 스크롤뷰 생성
@@ -155,7 +163,7 @@ Grid 형태로 여러 셀을 한 행/열에 배치할 수 있습니다. 그룹�
 
 빌드 오류나 런타임 오류 발생 시:
 ```
-[Assets/RecycleScroll/RecycleScroller.cs:123] CS0246 The type or namespace name could not be found
+[Packages/com.phjun.recyclescroller/Runtime/RecycleScroll/RecycleScroller.cs:123] CS0246 The type or namespace name could not be found
 ```
 
 ```
