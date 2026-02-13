@@ -31,8 +31,8 @@ Packages/com.phjun.recyclescroller/   # UPM 패키지 루트
 │   │   ├── RecycleScrollerEnums.cs    # 열거형 정의
 │   │   ├── RecycleScrollerHelper.cs   # 헬퍼 유틸리티
 │   │   ├── IRecycleScrollerDelegate.cs
-│   │   ├── ILoopScrollDelegate.cs
-│   │   ├── LoopScrollbar.cs           # 루프 스크롤바
+│   │   ├── IRecycleScrollbarDelegate.cs
+│   │   ├── RecycleScrollbar.cs        # 재활용 스크롤바
 │   │   ├── EasingFunctions.cs         # 이징 함수
 │   │   ├── MathUtils.cs
 │   │   └── AddressableCellProvider.cs # Addressables 셀 로더
@@ -103,14 +103,33 @@ Packages/com.phjun.recyclescroller/   # UPM 패키지 루트
 
 > **위반 시 조치**: 작업을 완료로 간주하지 않으며, 누락된 단계를 즉시 수행해야 한다.
 
-커스텀 명령어(`/project:신규`, `/project:수정`, `/project:간편`) 사용 여부와 관계없이, **모든 코드 변경 작업**은 반드시 다음을 수행해야 한다:
+#### 작업 진입 규칙
 
-1. **작업 시작 전** AGENTS.md 필독 순서를 따른다 (AGENTS.md → PROJECT_SUMMARY.md → WORKFLOW_PLANNING/INDEX.md → WORK_IN_PROGRESS.md)
-2. **Code 단계 완료 후** 반드시 컴파일 검증을 수행한다 (Unity/C# 컴파일 에러 0건 확인)
-3. **작업 완료 전** `.guides/VERIFICATION_ITEMS.md`의 해당 체크리스트를 확인한다
-4. **작업 완료 전** Self-Validation Checklist를 수행하고 결과를 보고한다
+**모든 코드 변경 작업**은 반드시 커스텀 명령어를 통해 시작해야 한다. 사용자가 커스텀 명령어 없이 직접 코드 수정을 요청한 경우, 작업 규모를 판단하여 적절한 명령어 사용을 안내한다.
+
+| 작업 규모 | 판단 기준 | 사용 명령어 |
+|-----------|----------|------------|
+| **대규모** | 새 기능 추가, 복잡한 로직 변경, 아키텍처 변경 | `/project:신규` 또는 `/project:수정` |
+| **중소규모** | 버그 수정, 리팩토링, 구조 변경, 설정 수정 | `/project:간편` |
+
+#### 공통 필수 검증 (모든 규모 적용)
+
+어떤 명령어를 사용하든, **코드 변경 작업 완료 전** 반드시 다음을 수행해야 한다:
+
+1. **컴파일 검증**: Unity/C# 컴파일 에러 0건 확인 (LSP 또는 수동 코드 리뷰)
+2. **검증 항목 확인**: `.guides/VERIFICATION_ITEMS.md`의 해당 체크리스트 확인
+3. **Self-Validation Checklist**: AGENTS.md의 체크리스트를 수행하고 결과를 보고
+4. **수렴 검증 확인** (중소규모 작업 한정): 작업 완료 보고 시 사용자에게 "수렴 검증을 추가로 수행할까요?"를 확인한다. 사용자가 요청하면 결과물의 누락·모호·위험 요소가 0건이 될 때까지 반복 점검한다.
 5. **위 항목을 수행하지 않은 작업은 완료로 간주하지 않는다**
-6. **문제 발생 시** 재발 가능성이 있는 문제는 `.guides/VERIFICATION_ITEMS.md`에 검증 항목을 추가한다
+6. **문제 발생 시** 재발 가능성이 있는 문제는 `.guides/VERIFICATION_ITEMS.md`에 검증 항목을 추가
+
+#### 대규모 작업 추가 요구사항
+
+`/project:신규`, `/project:수정` 사용 시 공통 필수 검증에 더해 다음을 수행한다:
+
+1. **작업 시작 전** AGENTS.md 필독 순서 (AGENTS.md → PROJECT_SUMMARY.md → WORKFLOW_PLANNING/INDEX.md → WORK_IN_PROGRESS.md)
+2. **WorkID 생성** 및 WORK_IN_PROGRESS.md 기록
+3. **전체 파이프라인** (Plan → Design → Code → Test → Docs → QA → Review) 및 Gate 검증
 
 ---
 
@@ -151,14 +170,16 @@ Plan → Design → Code → Test → Docs → QA → Review
 
 ---
 
-## 작업 중 문서화 규칙 (필수)
+## 작업 중 문서화 규칙
 
-다른 PC 또는 다른 사용자가 작업을 이어받을 수 있도록, 모든 개발 작업 시 다음을 준수합니다:
+대규모 작업(`/project:신규`, `/project:수정`) 시 다른 PC 또는 다른 사용자가 작업을 이어받을 수 있도록 다음을 준수합니다:
 
 1. **작업 시작** → `WORK_IN_PROGRESS.md`에 WorkID 및 계획 기록
 2. **각 단계 완료** → 체크박스 업데이트 + 진행 상황 타임스탬프
 3. **중단 시** → 현재 상태, 다음 할 일, 미해결 이슈를 명시적으로 기록
 4. **재개 시** → `/project:작업이어하기 WIP-YYYYMMDD-NNN`으로 이전 작업 확인 후 이어서 진행
+
+> **참고**: 중소규모 작업(`/project:간편`)에서는 WIP 추적이 필요하지 않으며, 공통 필수 검증만 수행합니다.
 
 ---
 
