@@ -36,6 +36,18 @@
 
 ---
 
+## Task 4. 에디터 오픈 시 패키지 버전 체크 및 업데이트 팝업
+
+- RecycleScroller 패키지가 설치된 프로젝트에서 Unity 에디터 오픈 시 **GitHub 최신 릴리즈 버전을 확인**
+- 현재 설치된 버전과 최신 버전이 불일치할 경우 **업데이트 안내 팝업** 표시
+- Editor 전용 코드 (빌드에 포함되지 않음)
+- 구현 고려 사항:
+  - `[InitializeOnLoad]` 또는 `SessionState` 기반으로 에디터 시작 시 1회 체크
+  - GitHub API (`releases/latest`) 또는 Git 태그로 최신 버전 조회
+  - 팝업에서 바로 UPM 업데이트 가능하도록 안내 (Git URL 복사 등)
+
+---
+
 ## 참조 파일
 
 | 파일 | 용도 |
