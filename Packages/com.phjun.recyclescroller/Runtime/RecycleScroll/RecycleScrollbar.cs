@@ -484,7 +484,6 @@ namespace RecycleScroll
                 m_HandleRect.anchorMax = anchorMax;
                 m_HandleRect.anchoredPosition = Vector2.zero;
                 m_HandleRect.sizeDelta = Vector2.zero;
-
             }
         }
 
