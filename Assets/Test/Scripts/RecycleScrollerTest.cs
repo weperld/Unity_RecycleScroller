@@ -48,21 +48,6 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
                 + $"\n  - ViewportSize: {m_scroller.ViewportSize}");
             LogScrollbarState();
         };
-
-        // 스크롤 이벤트 로깅
-        m_scroller.onCellBecameVisible += (cell, index) =>
-            Debug.Log($"[Cell Visible] dataIndex={index}, type={cell.GetType().Name}");
-        m_scroller.onCellBecameInvisible += (cell, index) =>
-            Debug.Log($"[Cell Invisible] dataIndex={index}");
-
-        // 스크롤바 이벤트 로깅
-        if (m_scrollbar != null)
-        {
-            m_scrollbar.onValueChanged.AddListener(val =>
-                Debug.Log($"[Scrollbar] value={val:F3}"));
-            m_scrollbar.OnLoopValueChanged.AddListener((real, showing) =>
-                Debug.Log($"[Scrollbar Loop] real={real:F3}, showing={showing:F3}"));
-        }
     }
 
     #endregion
