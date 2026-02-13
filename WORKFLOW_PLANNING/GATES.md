@@ -250,7 +250,7 @@ Plan → [Gate-1] → Design → [Gate-2] → Code → [Gate-3] → Test → [Ga
 │   ├── RecycleScrollerEnums.cs       # 열거형 정의
 │   ├── IRecycleScrollerDelegate.cs   # 델리게이트 인터페이스
 │   ├── EasingFunctions.cs            # 이징 함수
-│   └── LoopScrollbar.cs              # 루프 스크롤바
+│   └── RecycleScrollbar.cs           # 재활용 스크롤바
 ├── Editor/                  # 에디터 도구 및 커스텀 드로어
 │   ├── Attributes/          # 속성 드로어
 │   ├── Drawers/             # 커스텀 프로퍼티 드로어
@@ -305,7 +305,7 @@ Assets/
 │   ├── RecycleScrollerEnums.cs       # 열거형 정의
 │   ├── IRecycleScrollerDelegate.cs   # 델리게이트 인터페이스
 │   ├── EasingFunctions.cs            # 이징 함수
-│   └── LoopScrollbar.cs              # 루프 스크롤바
+│   └── RecycleScrollbar.cs           # 재활용 스크롤바
 ├── Editor/                  # 에디터 도구 및 커스텀 드로어
 │   ├── Attributes/          # 속성 드로어
 │   ├── Drawers/             # 커스텀 프로퍼티 드로어

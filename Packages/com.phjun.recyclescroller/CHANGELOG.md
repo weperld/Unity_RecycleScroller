@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - RecycleScroller 핵심 스크롤러 (Object Pooling 기반)
-- 무한 루프 스크롤 지원 (LoopScrollbar)
+- 무한 루프 스크롤 지원 (RecycleScrollbar)
 - 페이지네이션 기능
 - 셀 그룹 배치 (LoadDataExtension)
 - 비동기 데이터 로드 (UniTask 기반)

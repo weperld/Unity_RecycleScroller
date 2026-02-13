@@ -66,9 +66,9 @@ Assets/
 │   ├── RecycleScrollerHelper.cs        # 유틸리티 확장 메서드
 │   ├── IRecycleScrollerDelegate.cs     # 델리게이트 인터페이스
 │   ├── EasingFunctions.cs              # 30종 이상 이징 함수
-│   ├── LoopScrollbar.cs                # 루프 대응 스크롤바
+│   ├── RecycleScrollbar.cs             # 재활용 스크롤바
 │   ├── MathUtils.cs                    # 수학 유틸리티
-│   ├── ILoopScrollDelegate.cs          # 루프 스크롤 델리게이트
+│   ├── IRecycleScrollbarDelegate.cs    # 스크롤바 델리게이트
 │   └── AddressableCellProvider.cs      # Addressable 비동기 셀 로더 (옵션)
 ├── Editor/                  # 에디터 전용 (빌드 미포함)
 │   ├── RecycleScroll/       # 스크롤러 커스텀 인스펙터

@@ -28,7 +28,7 @@
 | RecycleScroller | 메인 컨트롤러 - 스크롤, 풀링, 페이징 관리 |
 | RecycleScrollerCell | 재활용 셀 기본 클래스 |
 | IRecycleScrollerDelegate | 데이터/셀 공급 인터페이스 |
-| LoopScrollbar | 무한 스크롤 전용 스크롤바 |
+| RecycleScrollbar | 재활용 스크롤바 |
 | LoadDataExtensionComponent | 데이터 로드 확장 기본 클래스 |
 | EasingFunctions | 30+ 이징 함수 라이브러리 |
 
@@ -124,7 +124,7 @@ Unity Editor > GameObject > UI > RecycleScrollView
 Viewport 밖으로 벗어난 셀을 자동 회수하여 풀에 보관하고, 새로 필요한 셀에 재활용합니다. 수천 개의 아이템도 소수의 셀만으로 표시 가능합니다.
 
 ### 2. Loop Scroll (무한 스크롤)
-스크롤 끝에서 처음으로 자동 순환합니다. LoopScrollbar를 통해 시각적 피드백도 지원합니다.
+스크롤 끝에서 처음으로 자동 순환합니다. RecycleScrollbar를 통해 시각적 피드백도 지원합니다.
 
 ### 3. Pagination
 페이지 단위 스냅 기능으로, 스크롤 종료 시 가장 가까운 페이지에 자동 정렬됩니다. 이징 함수로 부드러운 애니메이션을 제공합니다.
