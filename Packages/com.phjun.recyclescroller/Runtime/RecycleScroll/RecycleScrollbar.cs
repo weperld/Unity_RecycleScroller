@@ -19,7 +19,7 @@ namespace RecycleScroll
     {
         #region Enums & Event Types
 
-        public enum Direction
+        public enum eDirection
         {
             LeftToRight,
             RightToLeft,
@@ -27,7 +27,7 @@ namespace RecycleScroll
             TopToBottom,
         }
 
-        public enum FixedHandleSizeMode
+        public enum eFixedHandleSizeMode
         {
             /// <summary>스크롤바 영역 대비 비율로 핸들 최소 크기 지정</summary>
             Ratio,
@@ -35,7 +35,7 @@ namespace RecycleScroll
             PixelSize,
         }
 
-        private enum Axis
+        private enum eAxis
         {
             Horizontal = 0,
             Vertical = 1
@@ -61,7 +61,7 @@ namespace RecycleScroll
         #region Serialized Fields - Core Scrollbar
 
         [SerializeField] private RectTransform m_HandleRect;
-        [SerializeField] private Direction m_Direction = Direction.LeftToRight;
+        [SerializeField] private eDirection m_Direction = eDirection.LeftToRight;
 
         [Range(0f, 1f)]
         [SerializeField] private float m_Value;
@@ -80,7 +80,7 @@ namespace RecycleScroll
         #region Serialized Fields - Fixed Handle Size
 
         [SerializeField] private bool m_useFixedHandleSize = false;
-        [SerializeField] private FixedHandleSizeMode m_fixedHandleSizeMode = FixedHandleSizeMode.Ratio;
+        [SerializeField] private eFixedHandleSizeMode m_fixedHandleSizeMode = eFixedHandleSizeMode.Ratio;
 
         [Range(0.01f, 1f)]
         [SerializeField] private float m_fixedHandleRatio = 0.1f;
@@ -147,7 +147,7 @@ namespace RecycleScroll
             }
         }
 
-        public Direction direction
+        public eDirection direction
         {
             get => m_Direction;
             set
@@ -213,8 +213,8 @@ namespace RecycleScroll
 
                 float fixedRatio = m_fixedHandleSizeMode switch
                 {
-                    FixedHandleSizeMode.Ratio => m_fixedHandleRatio,
-                    FixedHandleSizeMode.PixelSize => ScrollbarRectSize > 0f
+                    eFixedHandleSizeMode.Ratio => m_fixedHandleRatio,
+                    eFixedHandleSizeMode.PixelSize => ScrollbarRectSize > 0f
                         ? Mathf.Clamp01(m_fixedHandlePixelSize / ScrollbarRectSize)
                         : size,
                     _ => size,
@@ -228,11 +228,11 @@ namespace RecycleScroll
 
         private float stepSize => (m_NumberOfSteps > 1) ? 1f / (m_NumberOfSteps - 1) : 0.1f;
 
-        private Axis axis => (m_Direction == Direction.LeftToRight || m_Direction == Direction.RightToLeft)
-            ? Axis.Horizontal
-            : Axis.Vertical;
+        private eAxis axis => (m_Direction == Direction.LeftToRight || m_Direction == Direction.RightToLeft)
+            ? eAxis.Horizontal
+            : eAxis.Vertical;
 
-        private bool reverseValue => m_Direction == Direction.RightToLeft || m_Direction == Direction.TopToBottom;
+        private bool reverseValue => m_Direction == eDirection.RightToLeft || m_Direction == eDirection.TopToBottom;
 
         #endregion
 
@@ -263,8 +263,8 @@ namespace RecycleScroll
 
         private float ScrollbarRectSize => direction switch
         {
-            Direction.LeftToRight or Direction.RightToLeft => rectTransform.rect.size.x,
-            Direction.BottomToTop or Direction.TopToBottom => rectTransform.rect.size.y,
+            eDirection.LeftToRight or eDirection.RightToLeft => rectTransform.rect.size.x,
+            eDirection.BottomToTop or eDirection.TopToBottom => rectTransform.rect.size.y,
             _ => 0f,
         };
 
@@ -387,8 +387,6 @@ namespace RecycleScroll
         {
             if (!Application.isPlaying) return;
 
-            UpdateLoopHandles();
-
             if (del == null || !del.IsLoopScrollable)
             {
                 OnLoopValueChanged.Invoke(val, val);
@@ -414,13 +412,15 @@ namespace RecycleScroll
         public virtual void SetValueWithoutNotify(float input)
         {
             Set(input, false);
-            UpdateLoopHandles();
         }
 
         /// <summary>
         /// 핸들의 앵커 위치를 value와 size 기반으로 갱신.
         /// Sliding Area와 Handle의 오프셋을 DrivenRectTransformTracker로 자동 강제하여
         /// 수동으로 Left/Right/Top/Bottom을 0으로 설정할 필요가 없습니다.
+        ///
+        /// 비루프 모드: Elastic 오버슈트 시 핸들 사이즈를 동적 축소.
+        /// 루프 모드: 메인 핸들이 [0,1] 경계를 넘을 때 서브 핸들 사이즈를 동적 설정.
         /// </summary>
         private void UpdateVisuals()
         {
@@ -448,13 +448,43 @@ namespace RecycleScroll
                     | DrivenTransformProperties.AnchoredPosition
                     | DrivenTransformProperties.SizeDelta);
 
+                // 루프 모드: 서브 핸들 트래커 등록
+                if (IsLoopMode)
+                {
+                    if (m_leftHandle)
+                        m_Tracker.Add(this, m_leftHandle,
+                            DrivenTransformProperties.Anchors
+                            | DrivenTransformProperties.AnchoredPosition
+                            | DrivenTransformProperties.SizeDelta);
+                    if (m_rightHandle)
+                        m_Tracker.Add(this, m_rightHandle,
+                            DrivenTransformProperties.Anchors
+                            | DrivenTransformProperties.AnchoredPosition
+                            | DrivenTransformProperties.SizeDelta);
+                }
+
                 Vector2 anchorMin = Vector2.zero;
                 Vector2 anchorMax = Vector2.one;
 
                 float displaySize = DisplaySize;
 
+                // === 비루프 모드: Elastic 핸들 사이즈 축소 ===
+                // value 오버슈트를 감지하여 핸들의 시각적 사이즈를 동적으로 축소.
+                // Unity ScrollRect 공식 변환: elasticSize = Clamp01(displaySize - overValue * (1 - size))
+                // DisplaySize 프로퍼티 자체는 변경하지 않아 드래그 로직(remainingSize)에 무영향.
+                float elasticDisplaySize = displaySize;
+                if (!IsLoopMode)
+                {
+                    float overValue = m_Value < 0f ? -m_Value : (m_Value > 1f ? m_Value - 1f : 0f);
+                    if (overValue > 0f)
+                        elasticDisplaySize = Mathf.Clamp01(displaySize - overValue * (1f - size));
+                }
+
+                // 시각적 사이즈 결정: 비루프는 Elastic 축소 적용, 루프는 기존 displaySize 유지
+                float visualSize = IsLoopMode ? displaySize : elasticDisplaySize;
+
                 // 루프 모드: 핸들 이동 범위 계산에 자연 비율(viewport/content)을 사용.
-                // displaySize(고정 최소 크기 적용)로 계산하면 서브 핸들 오프셋(±ScrollbarRectSize)과
+                // displaySize(고정 최소 크기 적용)로 계산하면 서브 핸들과
                 // 이동 범위가 불일치하여 wrap 경계에서 핸들이 점프함.
                 // naturalSize를 사용하면 value 범위 [0, content/scrollSize]가
                 // movement 범위 [0, 1.0]에 정확히 매핑되어 심리스 루프 달성.
@@ -466,18 +496,34 @@ namespace RecycleScroll
                 }
                 else
                 {
-                    movementScale = 1f - displaySize;
+                    movementScale = 1f - visualSize;
                 }
                 float movement = (IsLoopMode ? value : Mathf.Clamp01(value)) * movementScale;
                 if (reverseValue)
                 {
-                    anchorMin[(int)axis] = 1 - movement - displaySize;
+                    anchorMin[(int)axis] = 1 - movement - visualSize;
                     anchorMax[(int)axis] = 1 - movement;
                 }
                 else
                 {
                     anchorMin[(int)axis] = movement;
-                    anchorMax[(int)axis] = movement + displaySize;
+                    anchorMax[(int)axis] = movement + visualSize;
+                }
+
+                // === 루프 모드: 메인 핸들 클램프 + 서브 핸들 사이즈 전환 ===
+                // 메인 핸들 anchor가 [0,1] 범위를 넘는 양을 서브 핸들 사이즈로 설정하고,
+                // 메인 핸들 자체는 [0,1]로 클램프하여 경계에서 시각적으로 축소.
+                // reverseValue가 이미 anchor 계산에 반영되어 Direction 독립적.
+                if (IsLoopMode)
+                {
+                    float startWrap = Mathf.Max(0f, anchorMax[(int)axis] - 1f);
+                    float endWrap = Mathf.Max(0f, -anchorMin[(int)axis]);
+
+                    // 메인 핸들을 [0,1] 범위로 클램프 → wrap 부분만큼 실제 사이즈 축소
+                    anchorMin[(int)axis] = Mathf.Max(0f, anchorMin[(int)axis]);
+                    anchorMax[(int)axis] = Mathf.Min(1f, anchorMax[(int)axis]);
+
+                    UpdateLoopHandles(startWrap, endWrap);
                 }
 
                 m_HandleRect.anchorMin = anchorMin;
@@ -544,7 +590,7 @@ namespace RecycleScroll
                 else
                     UpdateDrag(eventData);
             }
-            // UpdateLoopHandles는 Set() → UpdateLoopScrollState()에서 자동 호출
+            // UpdateLoopHandles는 Set() → UpdateVisuals()에서 자동 호출
         }
 
         public void OnEndDrag(PointerEventData eventData)
@@ -573,23 +619,23 @@ namespace RecycleScroll
             Vector2 handleCenterRelativeToContainerCorner = localCursor - m_Offset - m_ContainerRect.rect.position;
             Vector2 handleCorner = handleCenterRelativeToContainerCorner - (m_HandleRect.rect.size - m_HandleRect.sizeDelta) * 0.5f;
 
-            float parentSize = axis == Axis.Horizontal ? m_ContainerRect.rect.width : m_ContainerRect.rect.height;
+            float parentSize = axis == eAxis.Horizontal ? m_ContainerRect.rect.width : m_ContainerRect.rect.height;
             float remainingSize = parentSize * (1 - DisplaySize);
             if (remainingSize <= 0)
                 return;
 
             switch (m_Direction)
             {
-                case Direction.LeftToRight:
+                case eDirection.LeftToRight:
                     Set(Mathf.Clamp01(handleCorner.x / remainingSize));
                     break;
-                case Direction.RightToLeft:
+                case eDirection.RightToLeft:
                     Set(Mathf.Clamp01(1f - (handleCorner.x / remainingSize)));
                     break;
-                case Direction.BottomToTop:
+                case eDirection.BottomToTop:
                     Set(Mathf.Clamp01(handleCorner.y / remainingSize));
                     break;
-                case Direction.TopToBottom:
+                case eDirection.TopToBottom:
                     Set(Mathf.Clamp01(1f - (handleCorner.y / remainingSize)));
                     break;
             }
@@ -625,10 +671,10 @@ namespace RecycleScroll
             Vector2 delta = localCursor - m_PrevDragLocalCursor.Value;
             m_PrevDragLocalCursor = localCursor;
 
-            float axisDelta = axis == Axis.Horizontal ? delta.x : delta.y;
+            float axisDelta = axis == eAxis.Horizontal ? delta.x : delta.y;
             if (reverseValue) axisDelta = -axisDelta;
 
-            float parentSize = axis == Axis.Horizontal ? m_ContainerRect.rect.width : m_ContainerRect.rect.height;
+            float parentSize = axis == eAxis.Horizontal ? m_ContainerRect.rect.width : m_ContainerRect.rect.height;
             float remainingSize = parentSize * (1 - DisplaySize);
             if (remainingSize <= 0)
                 return;
@@ -667,7 +713,7 @@ namespace RecycleScroll
                     if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
                         m_HandleRect, screenPosition, camera, out var localMousePos))
                     {
-                        var axisCoordinate = axis == Axis.Horizontal ? localMousePos.x : localMousePos.y;
+                        var axisCoordinate = axis == eAxis.Horizontal ? localMousePos.x : localMousePos.y;
 
                         float change = axisCoordinate < 0 ? size : -size;
                         float newValue = value + (reverseValue ? change : -change);
@@ -703,7 +749,7 @@ namespace RecycleScroll
 
         #region Navigation
 
-        public override void OnMove(AxisEventData eventData)
+        public override void OnMove(eAxisEventData eventData)
         {
             if (!IsActive() || !IsInteractable())
             {
@@ -714,25 +760,25 @@ namespace RecycleScroll
             switch (eventData.moveDir)
             {
                 case MoveDirection.Left:
-                    if (axis == Axis.Horizontal && FindSelectableOnLeft() == null)
+                    if (axis == eAxis.Horizontal && FindSelectableOnLeft() == null)
                         Set(Mathf.Clamp01(reverseValue ? value + stepSize : value - stepSize));
                     else
                         base.OnMove(eventData);
                     break;
                 case MoveDirection.Right:
-                    if (axis == Axis.Horizontal && FindSelectableOnRight() == null)
+                    if (axis == eAxis.Horizontal && FindSelectableOnRight() == null)
                         Set(Mathf.Clamp01(reverseValue ? value - stepSize : value + stepSize));
                     else
                         base.OnMove(eventData);
                     break;
                 case MoveDirection.Up:
-                    if (axis == Axis.Vertical && FindSelectableOnUp() == null)
+                    if (axis == eAxis.Vertical && FindSelectableOnUp() == null)
                         Set(Mathf.Clamp01(reverseValue ? value - stepSize : value + stepSize));
                     else
                         base.OnMove(eventData);
                     break;
                 case MoveDirection.Down:
-                    if (axis == Axis.Vertical && FindSelectableOnDown() == null)
+                    if (axis == eAxis.Vertical && FindSelectableOnDown() == null)
                         Set(Mathf.Clamp01(reverseValue ? value + stepSize : value - stepSize));
                     else
                         base.OnMove(eventData);
@@ -742,28 +788,28 @@ namespace RecycleScroll
 
         public override Selectable FindSelectableOnLeft()
         {
-            if (navigation.mode == Navigation.Mode.Automatic && axis == Axis.Horizontal)
+            if (navigation.mode == Navigation.Mode.Automatic && axis == eAxis.Horizontal)
                 return null;
             return base.FindSelectableOnLeft();
         }
 
         public override Selectable FindSelectableOnRight()
         {
-            if (navigation.mode == Navigation.Mode.Automatic && axis == Axis.Horizontal)
+            if (navigation.mode == Navigation.Mode.Automatic && axis == eAxis.Horizontal)
                 return null;
             return base.FindSelectableOnRight();
         }
 
         public override Selectable FindSelectableOnUp()
         {
-            if (navigation.mode == Navigation.Mode.Automatic && axis == Axis.Vertical)
+            if (navigation.mode == Navigation.Mode.Automatic && axis == eAxis.Vertical)
                 return null;
             return base.FindSelectableOnUp();
         }
 
         public override Selectable FindSelectableOnDown()
         {
-            if (navigation.mode == Navigation.Mode.Automatic && axis == Axis.Vertical)
+            if (navigation.mode == Navigation.Mode.Automatic && axis == eAxis.Vertical)
                 return null;
             return base.FindSelectableOnDown();
         }
@@ -772,20 +818,20 @@ namespace RecycleScroll
 
         #region Direction Utility
 
-        public void SetDirection(Direction direction, bool includeRectLayouts)
+        public void SetDirection(eDirection direction, bool includeRectLayouts)
         {
-            Axis oldAxis = axis;
+            eAxis oldeAxis = axis;
             bool oldReverse = reverseValue;
             this.direction = direction;
 
             if (!includeRectLayouts)
                 return;
 
-            if (axis != oldAxis)
+            if (axis != oldeAxis)
                 RectTransformUtility.FlipLayoutAxes(transform as RectTransform, true, true);
 
             if (reverseValue != oldReverse)
-                RectTransformUtility.FlipLayoutOnAxis(transform as RectTransform, (int)axis, true, true);
+                RectTransformUtility.FlipLayoutOneAxis(transform as RectTransform, (int)axis, true, true);
         }
 
         #endregion
@@ -794,8 +840,8 @@ namespace RecycleScroll
 
         public void Refresh()
         {
-            UpdateLoopHandles();
             ResetSubHandlesPosition();
+            UpdateVisuals();
         }
 
         public void SetSize(float size)
@@ -808,37 +854,73 @@ namespace RecycleScroll
 
         #region Loop Scrollbar - Handle Updates
 
-        private void UpdateLoopHandles()
+        /// <summary>
+        /// 루프 모드 서브 핸들의 사이즈를 wrap 양에 따라 동적 설정.
+        /// 시작 에지(0 side)와 끝 에지(1 side)에 고정된 서브 핸들의 anchor를 조정하여
+        /// 메인 핸들이 [0,1] 경계를 넘을 때 wrap 부분을 표시합니다.
+        /// </summary>
+        private void UpdateLoopHandles(float startWrap, float endWrap)
         {
-            if (handleRect == null) return;
-            var rectSize = handleRect.rect.size;
-            if (m_leftHandle) m_leftHandle.sizeDelta = rectSize;
-            if (m_rightHandle) m_rightHandle.sizeDelta = rectSize;
+            if (m_leftHandle)
+            {
+                Vector2 aMin = Vector2.zero;
+                Vector2 aMax = Vector2.one;
+                aMin[(int)axis] = 0f;
+                aMax[(int)axis] = startWrap;
+                m_leftHandle.anchorMin = aMin;
+                m_leftHandle.anchorMax = aMax;
+                m_leftHandle.anchoredPosition = Vector2.zero;
+                m_leftHandle.sizeDelta = Vector2.zero;
+                m_leftHandle.gameObject.SetActive(startWrap > 0.001f);
+            }
+
+            if (m_rightHandle)
+            {
+                Vector2 aMin = Vector2.zero;
+                Vector2 aMax = Vector2.one;
+                aMin[(int)axis] = 1f - endWrap;
+                aMax[(int)axis] = 1f;
+                m_rightHandle.anchorMin = aMin;
+                m_rightHandle.anchorMax = aMax;
+                m_rightHandle.anchoredPosition = Vector2.zero;
+                m_rightHandle.sizeDelta = Vector2.zero;
+                m_rightHandle.gameObject.SetActive(endWrap > 0.001f);
+            }
         }
 
-        private void ResetSubHandlePosition(RectTransform subHandle, bool isLeft)
+        /// <summary>
+        /// 서브 핸들을 anchor 기반으로 에지에 고정 배치합니다.
+        /// 시작 에지(isStartEdge=true): anchorMin[axis]=0, anchorMax[axis]=0 (사이즈 0 초기화)
+        /// 끝 에지(isStartEdge=false): anchorMin[axis]=1, anchorMax[axis]=1 (사이즈 0 초기화)
+        /// 실제 사이즈는 UpdateLoopHandles()에서 wrap 양에 따라 동적 설정됩니다.
+        /// </summary>
+        private void ResetSubHandlePosition(RectTransform subHandle, bool isStartEdge)
         {
             if (subHandle == null) return;
 
-            subHandle.gameObject.SetActive(Del.IsLoopScrollable);
-            if (Del.IsLoopScrollable == false) return;
+            bool loopActive = Del != null && Del.IsLoopScrollable;
+            subHandle.gameObject.SetActive(loopActive);
+            if (!loopActive) return;
 
-            var handlePosition = Vector2.zero;
-            switch (direction)
+            Vector2 aMin = Vector2.zero;
+            Vector2 aMax = Vector2.one;
+
+            if (isStartEdge)
             {
-                case Direction.BottomToTop or Direction.TopToBottom:
-                    handlePosition.y = isLeft ? -ScrollbarRectSize : ScrollbarRectSize;
-                    break;
-                case Direction.LeftToRight or Direction.RightToLeft:
-                    handlePosition.x = isLeft ? -ScrollbarRectSize : ScrollbarRectSize;
-                    break;
+                aMin[(int)axis] = 0f;
+                aMax[(int)axis] = 0f;
+            }
+            else
+            {
+                aMin[(int)axis] = 1f;
+                aMax[(int)axis] = 1f;
             }
 
-            var vec2 = Vector2.one * 0.5f;
-            subHandle.pivot = vec2;
-            subHandle.anchorMin = vec2;
-            subHandle.anchorMax = vec2;
-            subHandle.anchoredPosition = handlePosition;
+            subHandle.anchorMin = aMin;
+            subHandle.anchorMax = aMax;
+            subHandle.pivot = new Vector2(0.5f, 0.5f);
+            subHandle.anchoredPosition = Vector2.zero;
+            subHandle.sizeDelta = Vector2.zero;
         }
 
         private void ResetSubHandlesPosition()
@@ -854,11 +936,15 @@ namespace RecycleScroll
             CreateSubHandle(ref m_leftHandle, "Sub Handle 0");
             CreateSubHandle(ref m_rightHandle, "Sub Handle 1");
 
-            m_leftHandle.SetParent(handleRect);
-            m_rightHandle.SetParent(handleRect);
+            // 서브 핸들을 HandleContainerRect(Sliding Area) 직속 자식으로 배치.
+            // 메인 핸들과 독립적인 anchor 기반 사이즈 제어를 위해 동일 부모 레벨에 배치.
+            m_leftHandle.SetParent(HandleContainerRect);
+            m_rightHandle.SetParent(HandleContainerRect);
+
+            // 서브 핸들의 Graphic을 m_graphics에 동적 등록 (DoStateTransition 색상 연동)
+            RegisterSubHandleGraphics();
 
             ResetSubHandlesPosition();
-            UpdateLoopHandles();
             return;
 
             void CreateSubHandle(ref RectTransform subHandle, string name)
@@ -866,6 +952,31 @@ namespace RecycleScroll
                 if (subHandle == null) subHandle = Instantiate(handleRect, HandleContainerRect);
                 subHandle.name = name;
                 subHandle.gameObject.SetActive(true);
+            }
+        }
+
+        /// <summary>
+        /// 서브 핸들의 Graphic 컴포넌트를 m_graphics 배열에 등록합니다.
+        /// DoStateTransition()에서 색상/스프라이트 전환이 서브 핸들에도 적용되도록 합니다.
+        /// </summary>
+        private void RegisterSubHandleGraphics()
+        {
+            if (m_graphics == null) m_graphics = Array.Empty<Graphic>();
+
+            var newGraphics = new System.Collections.Generic.List<Graphic>(m_graphics);
+
+            RegisterGraphic(m_leftHandle);
+            RegisterGraphic(m_rightHandle);
+
+            m_graphics = newGraphics.ToArray();
+            return;
+
+            void RegisterGraphic(RectTransform subHandle)
+            {
+                if (subHandle == null) return;
+                var graphic = subHandle.GetComponent<Graphic>();
+                if (graphic != null && !newGraphics.Contains(graphic))
+                    newGraphics.Add(graphic);
             }
         }
 

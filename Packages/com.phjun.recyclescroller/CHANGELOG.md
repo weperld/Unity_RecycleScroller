@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- 비루프 모드: Elastic 오버슈트 시 핸들 사이즈 동적 축소 (Unity ScrollRect 동일 공식)
+- 루프 모드: 서브 핸들 Graphic을 DoStateTransition 색상 전환에 동적 등록
+
+### Changed
+- 루프 모드 서브 핸들: 위치 이동 방식 → anchor 기반 사이즈 전환 방식으로 재설계
+- 서브 핸들 부모를 handleRect → HandleContainerRect(Sliding Area)로 변경
+- UpdateLoopHandles() 호출 경로를 UpdateVisuals() 내 단일 경로로 통합
+
 ## [1.1.0] - 2026-02-14
 
 ### Added
