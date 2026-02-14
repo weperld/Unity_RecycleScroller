@@ -26,6 +26,11 @@
 - [ ] `.asmdef` 파일의 참조(`references`)가 올바른지 확인
 - [ ] `Samples~/` 폴더가 컴파일에서 제외되는지 확인
 
+### 이름 변경 (Rename / Replace All)
+
+- [ ] `replace_all`로 식별자를 변경할 때 복합어(compound word)가 오염되지 않았는지 확인 (예: `EqualityType`→`eEqualityType` 시 `ConvertStringToEqualityType`→`ConvertStringToeEqualityType` 오염)
+- [ ] enum 접두사(`e`) 추가 시 이미 접두사가 있는 식별자에 이중 적용(`eeXxx`)되지 않았는지 확인
+
 ### 파일 생성 / 수정
 
 - [ ] 생성한 파일에 플레이스홀더(`<user>`, `TODO`, `FIXME` 등)가 남아있지 않은지 확인
