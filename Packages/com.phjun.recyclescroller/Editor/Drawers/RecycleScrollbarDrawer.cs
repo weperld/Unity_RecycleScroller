@@ -1,3 +1,4 @@
+using System;
 using RecycleScroll;
 using UnityEditor;
 using UnityEditor.UI;
@@ -26,7 +27,9 @@ public class RecycleScrollbarEditor : SelectableEditor
     // Loop Scrollbar - References
     private SerializedProperty m_leftHandle;
     private SerializedProperty m_rightHandle;
-    private SerializedProperty m_graphics;
+
+    // Extra Transitions
+    private SerializedProperty m_extraTransitions;
 
     // Events
     private SerializedProperty m_onValueChanged;
@@ -60,89 +63,12 @@ public class RecycleScrollbarEditor : SelectableEditor
 
     #endregion
 
-    #region Foldout Styles & Colors
+    #region Big Title Colors
 
-    // Big category title colors (each unique pastel)
     private const string BIG_TITLE_COLOR_SELECTABLE = "#FF99CC";
     private const string BIG_TITLE_COLOR_SCROLLBAR = "#FFFF99";
     private const string BIG_TITLE_COLOR_LOOP = "#99FFBB";
     private const string BIG_TITLE_COLOR_EVENTS = "#CC99FF";
-
-    // Big category box colors (alternating neutral grey tints over helpBox)
-    private static readonly Color m_bigBoxColorA = new(0.06f, 0.06f, 0.06f, 0.5f);
-    private static readonly Color m_bigBoxColorB = new(0.14f, 0.14f, 0.14f, 0.5f);
-
-    // Small category title colors (alternating green pastel)
-    private const string SMALL_TITLE_COLOR_A = "#A8E6CF";
-    private const string SMALL_TITLE_COLOR_B = "#C8E6A0";
-
-    // Small category box colors (alternating green-grey)
-    private static readonly Color m_smallBoxColorA = new(0.20f, 0.28f, 0.22f, 0.45f);
-    private static readonly Color m_smallBoxColorB = new(0.26f, 0.30f, 0.20f, 0.45f);
-
-    private static GUIStyle m_titleStyle;
-    private static GUIStyle TitleStyle
-    {
-        get
-        {
-            if (m_titleStyle == null)
-            {
-                m_titleStyle = new GUIStyle(EditorStyles.boldLabel)
-                {
-                    fontSize = 15
-                };
-            }
-            return m_titleStyle;
-        }
-    }
-
-    private static GUIStyle m_bigFoldoutStyle;
-    private static GUIStyle BigFoldoutStyle
-    {
-        get
-        {
-            if (m_bigFoldoutStyle == null)
-            {
-                m_bigFoldoutStyle = new GUIStyle(EditorStyles.foldoutHeader)
-                {
-                    richText = true,
-                    fontStyle = FontStyle.Bold,
-                    fontSize = 12
-                };
-            }
-            return m_bigFoldoutStyle;
-        }
-    }
-
-    private static GUIStyle m_smallFoldoutStyle;
-    private static GUIStyle SmallFoldoutStyle
-    {
-        get
-        {
-            if (m_smallFoldoutStyle == null)
-            {
-                m_smallFoldoutStyle = new GUIStyle(EditorStyles.foldout)
-                {
-                    richText = true
-                };
-            }
-            return m_smallFoldoutStyle;
-        }
-    }
-
-    private static bool DrawBigCategoryFoldout(ref bool foldout, string title, string hexColor)
-    {
-        foldout = EditorGUILayout.Foldout(foldout, $"<color={hexColor}>{title}</color>", true, BigFoldoutStyle);
-        return foldout;
-    }
-
-    private static bool DrawSmallCategoryFoldout(ref bool foldout, string title, string hexColor, Color boxColor)
-    {
-        var rect = EditorGUILayout.GetControlRect();
-        EditorGUI.DrawRect(rect, boxColor);
-        foldout = EditorGUI.Foldout(rect, foldout, $"<color={hexColor}>{title}</color>", true, SmallFoldoutStyle);
-        return foldout;
-    }
 
     #endregion
 
@@ -170,7 +96,9 @@ public class RecycleScrollbarEditor : SelectableEditor
         // Loop Scrollbar - References
         m_leftHandle = serializedObject.FindProperty("m_leftHandle");
         m_rightHandle = serializedObject.FindProperty("m_rightHandle");
-        m_graphics = serializedObject.FindProperty("m_graphics");
+
+        // Extra Transitions
+        m_extraTransitions = serializedObject.FindProperty("m_extraTransitions");
 
         // Events
         m_onValueChanged = serializedObject.FindProperty("m_onValueChanged");
@@ -194,7 +122,7 @@ public class RecycleScrollbarEditor : SelectableEditor
         serializedObject.Update();
 
         EditorGUILayout.Space();
-        EditorGUILayout.LabelField("[Recycle Scrollbar Settings]", TitleStyle);
+        EditorGUILayout.LabelField("[Recycle Scrollbar Settings]", EditorDrawerHelper.InspectorTitleStyle);
         EditorDrawerHelper.DrawDividerLine();
 
         EditorGUI.indentLevel++;
@@ -221,22 +149,29 @@ public class RecycleScrollbarEditor : SelectableEditor
 
     #region Draw - Selectable
 
+    // base.OnInspectorGUI()는 람다에서 호출 불가하므로 래퍼 사용
+    private void DrawBaseSelectableGUI() => base.OnInspectorGUI();
+
     private void DrawSelectableSection()
     {
-        var rect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-        if (Event.current.type == EventType.Repaint)
-            EditorGUI.DrawRect(rect, m_bigBoxColorA);
-
-        DrawBigCategoryFoldout(ref m_foldoutSelectable, "[Selectable]", BIG_TITLE_COLOR_SELECTABLE);
-        if (m_foldoutSelectable)
+        EditorDrawerHelper.DrawBigCategory(ref m_foldoutSelectable, "[Selectable]", BIG_TITLE_COLOR_SELECTABLE,
+            EditorDrawerHelper.BigBoxColorA, "Interactable, Transition, Navigation, Extra Transitions 설정", () =>
         {
-            EditorGUILayout.LabelField("↳ Interactable, Transition, Navigation 설정", EditorStyles.miniLabel);
-            EditorGUI.indentLevel++;
-            base.OnInspectorGUI();
-            EditorGUI.indentLevel--;
-        }
+            DrawBaseSelectableGUI();
+            EditorGUILayout.Space(2f);
+            int prevSize = m_extraTransitions.arraySize;
+            EditorGUILayout.PropertyField(m_extraTransitions, new GUIContent("Extra Transitions",
+                "각 항목이 독립적인 Transition/ColorBlock/SpriteState를 가집니다.\n"
+                + "메인 핸들(또는 자식)의 그래픽을 지정하면 서브 핸들에도 동일 트랜지션이 자동 적용됩니다."));
 
-        EditorGUILayout.EndVertical();
+            // 새 엔트리 추가 시 기본 Selectable 트랜지션 설정 자동 복사
+            if (m_extraTransitions.arraySize > prevSize)
+            {
+                for (int i = prevSize; i < m_extraTransitions.arraySize; i++)
+                    ExtraTransitionEntryDrawer.CopyBaseTransitionToEntry(
+                        m_extraTransitions.GetArrayElementAtIndex(i));
+            }
+        });
     }
 
     #endregion
@@ -245,56 +180,27 @@ public class RecycleScrollbarEditor : SelectableEditor
 
     private void DrawScrollbarSection()
     {
-        var rect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-        if (Event.current.type == EventType.Repaint)
-            EditorGUI.DrawRect(rect, m_bigBoxColorB);
-
-        DrawBigCategoryFoldout(ref m_foldoutScrollbar, "[Scrollbar]", BIG_TITLE_COLOR_SCROLLBAR);
-        if (m_foldoutScrollbar)
+        EditorDrawerHelper.DrawBigCategory(ref m_foldoutScrollbar, "[Scrollbar]", BIG_TITLE_COLOR_SCROLLBAR,
+            EditorDrawerHelper.BigBoxColorB, "핸들, 방향 및 값 설정", () =>
         {
-            EditorGUILayout.LabelField("↳ 핸들, 방향 및 값 설정", EditorStyles.miniLabel);
-            EditorGUI.indentLevel++;
-
-            // Handle
-            var subRect1 = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            if (Event.current.type == EventType.Repaint)
-                EditorGUI.DrawRect(subRect1, m_smallBoxColorA);
-            DrawSmallCategoryFoldout(ref m_foldoutHandle, "[Handle]",
-                SMALL_TITLE_COLOR_A, m_smallBoxColorA);
-            if (m_foldoutHandle)
+            EditorDrawerHelper.DrawSmallCategory(ref m_foldoutHandle, "[Handle]",
+                EditorDrawerHelper.SMALL_TITLE_COLOR_A, EditorDrawerHelper.SmallBoxColorA, () =>
             {
-                EditorGUI.indentLevel++;
                 EditorGUILayout.PropertyField(m_handleRect, new GUIContent("Handle Rect"));
                 EditorGUILayout.PropertyField(m_direction, new GUIContent("Direction"));
-                EditorGUI.indentLevel--;
-            }
-            EditorGUILayout.EndVertical();
+            });
 
-            // Value
-            var subRect2 = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            if (Event.current.type == EventType.Repaint)
-                EditorGUI.DrawRect(subRect2, m_smallBoxColorB);
-            DrawSmallCategoryFoldout(ref m_foldoutValue, "[Value]",
-                SMALL_TITLE_COLOR_B, m_smallBoxColorB);
-            if (m_foldoutValue)
+            EditorDrawerHelper.DrawSmallCategory(ref m_foldoutValue, "[Value]",
+                EditorDrawerHelper.SMALL_TITLE_COLOR_B, EditorDrawerHelper.SmallBoxColorB, () =>
             {
-                EditorGUI.indentLevel++;
                 EditorGUILayout.PropertyField(m_value, new GUIContent("Value"));
                 EditorGUILayout.PropertyField(m_size, new GUIContent("Size"));
                 EditorGUILayout.PropertyField(m_numberOfSteps, new GUIContent("Number Of Steps"));
-                EditorGUI.indentLevel--;
-            }
-            EditorGUILayout.EndVertical();
+            });
 
-            // Fixed Handle Size
-            var subRect3 = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            if (Event.current.type == EventType.Repaint)
-                EditorGUI.DrawRect(subRect3, m_smallBoxColorA);
-            DrawSmallCategoryFoldout(ref m_foldoutFixedHandleSize, "[Fixed Handle Size]",
-                SMALL_TITLE_COLOR_A, m_smallBoxColorA);
-            if (m_foldoutFixedHandleSize)
+            EditorDrawerHelper.DrawSmallCategory(ref m_foldoutFixedHandleSize, "[Fixed Handle Size]",
+                EditorDrawerHelper.SMALL_TITLE_COLOR_A, EditorDrawerHelper.SmallBoxColorA, () =>
             {
-                EditorGUI.indentLevel++;
                 EditorGUILayout.PropertyField(m_useFixedHandleSize, new GUIContent("Use Fixed Handle Size"));
                 if (m_useFixedHandleSize.boolValue)
                 {
@@ -310,14 +216,8 @@ public class RecycleScrollbarEditor : SelectableEditor
                     else
                         EditorGUILayout.PropertyField(m_fixedHandlePixelSize, new GUIContent("Min Pixel Size", "핸들 최소 픽셀 크기"));
                 }
-                EditorGUI.indentLevel--;
-            }
-            EditorGUILayout.EndVertical();
-
-            EditorGUI.indentLevel--;
-        }
-
-        EditorGUILayout.EndVertical();
+            });
+        });
     }
 
     #endregion
@@ -326,42 +226,24 @@ public class RecycleScrollbarEditor : SelectableEditor
 
     private void DrawLoopScrollbarSection()
     {
-        var rect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-        if (Event.current.type == EventType.Repaint)
-            EditorGUI.DrawRect(rect, m_bigBoxColorA);
-
-        DrawBigCategoryFoldout(ref m_foldoutLoopScrollbar, "[Loop Scrollbar]", BIG_TITLE_COLOR_LOOP);
-        if (m_foldoutLoopScrollbar)
+        EditorDrawerHelper.DrawBigCategory(ref m_foldoutLoopScrollbar, "[Loop Scrollbar]", BIG_TITLE_COLOR_LOOP,
+            EditorDrawerHelper.BigBoxColorA, "루프 스크롤 전용 레퍼런스 (자동 관리, 읽기 전용)", () =>
         {
-            EditorGUILayout.LabelField("↳ 루프 스크롤 전용 레퍼런스 설정", EditorStyles.miniLabel);
-            EditorGUI.indentLevel++;
-
-            // References
-            var subRect1 = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            if (Event.current.type == EventType.Repaint)
-                EditorGUI.DrawRect(subRect1, m_smallBoxColorA);
-            DrawSmallCategoryFoldout(ref m_foldoutReferences, "[References]",
-                SMALL_TITLE_COLOR_A, m_smallBoxColorA);
-            if (m_foldoutReferences)
+            EditorDrawerHelper.DrawSmallCategory(ref m_foldoutReferences, "[References]",
+                EditorDrawerHelper.SMALL_TITLE_COLOR_A, EditorDrawerHelper.SmallBoxColorA, () =>
             {
-                EditorGUI.indentLevel++;
                 EditorDrawerHelper.DrawCustomHelpBox(
-                    "Target Graphics: Selectable 상태 전환(Color Tint/Sprite Swap) 대상 그래픽\n"
-                    + "Sub Handle 0/1: 루프 스크롤 시 핸들 양쪽에 표시되는 보조 핸들 (자동 생성)",
+                    "Sub Handle 0/1: 루프 스크롤 시 핸들 양쪽에 표시되는 보조 핸들 (자동 생성)\n"
+                    + "서브 핸들의 트랜지션 그래픽은 Selectable > Extra Transitions 설정에 따라 자동 감지됩니다.",
                     MessageType.Info, Color.white);
                 EditorGUILayout.Space(2f);
 
-                EditorGUILayout.PropertyField(m_graphics, new GUIContent("Target Graphics"));
+                EditorGUI.BeginDisabledGroup(true);
                 EditorGUILayout.PropertyField(m_leftHandle, new GUIContent("Sub Handle 0"));
                 EditorGUILayout.PropertyField(m_rightHandle, new GUIContent("Sub Handle 1"));
-                EditorGUI.indentLevel--;
-            }
-            EditorGUILayout.EndVertical();
-
-            EditorGUI.indentLevel--;
-        }
-
-        EditorGUILayout.EndVertical();
+                EditorGUI.EndDisabledGroup();
+            });
+        });
     }
 
     #endregion
@@ -370,50 +252,23 @@ public class RecycleScrollbarEditor : SelectableEditor
 
     private void DrawEventsSection()
     {
-        var rect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-        if (Event.current.type == EventType.Repaint)
-            EditorGUI.DrawRect(rect, m_bigBoxColorB);
-
-        DrawBigCategoryFoldout(ref m_foldoutEvents, "[Events]", BIG_TITLE_COLOR_EVENTS);
-        if (m_foldoutEvents)
+        EditorDrawerHelper.DrawBigCategory(ref m_foldoutEvents, "[Events]", BIG_TITLE_COLOR_EVENTS,
+            EditorDrawerHelper.BigBoxColorB, "스크롤바 이벤트 콜백 설정", () =>
         {
-            EditorGUILayout.LabelField("↳ 스크롤바 이벤트 콜백 설정", EditorStyles.miniLabel);
-            EditorGUI.indentLevel++;
-
-            // Scrollbar Events
-            var subRect1 = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            if (Event.current.type == EventType.Repaint)
-                EditorGUI.DrawRect(subRect1, m_smallBoxColorA);
-            DrawSmallCategoryFoldout(ref m_foldoutScrollbarEvents, "[Scrollbar Events]",
-                SMALL_TITLE_COLOR_A, m_smallBoxColorA);
-            if (m_foldoutScrollbarEvents)
+            EditorDrawerHelper.DrawSmallCategory(ref m_foldoutScrollbarEvents, "[Scrollbar Events]",
+                EditorDrawerHelper.SMALL_TITLE_COLOR_A, EditorDrawerHelper.SmallBoxColorA, () =>
             {
-                EditorGUI.indentLevel++;
                 EditorGUILayout.PropertyField(m_onValueChanged, new GUIContent("On Value Changed (float)"));
-                EditorGUI.indentLevel--;
-            }
-            EditorGUILayout.EndVertical();
+            });
 
-            // Loop Events
-            var subRect2 = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            if (Event.current.type == EventType.Repaint)
-                EditorGUI.DrawRect(subRect2, m_smallBoxColorB);
-            DrawSmallCategoryFoldout(ref m_foldoutLoopEvents, "[Loop Events]",
-                SMALL_TITLE_COLOR_B, m_smallBoxColorB);
-            if (m_foldoutLoopEvents)
+            EditorDrawerHelper.DrawSmallCategory(ref m_foldoutLoopEvents, "[Loop Events]",
+                EditorDrawerHelper.SMALL_TITLE_COLOR_B, EditorDrawerHelper.SmallBoxColorB, () =>
             {
-                EditorGUI.indentLevel++;
                 EditorGUILayout.PropertyField(m_onLoopValueChanged, new GUIContent("On Loop Value Changed"));
                 EditorGUILayout.PropertyField(m_onBeginDragged, new GUIContent("On Begin Dragged"));
                 EditorGUILayout.PropertyField(m_onEndDragged, new GUIContent("On End Dragged"));
-                EditorGUI.indentLevel--;
-            }
-            EditorGUILayout.EndVertical();
-
-            EditorGUI.indentLevel--;
-        }
-
-        EditorGUILayout.EndVertical();
+            });
+        });
     }
 
     #endregion
