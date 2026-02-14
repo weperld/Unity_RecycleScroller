@@ -19,7 +19,7 @@ namespace RecycleScroll
     {
         #region Enums & Event Types
 
-        public enum eDirection
+        public enum Direction
         {
             LeftToRight,
             RightToLeft,
@@ -27,7 +27,7 @@ namespace RecycleScroll
             TopToBottom,
         }
 
-        public enum eFixedHandleSizeMode
+        public enum FixedHandleSizeMode
         {
             /// <summary>스크롤바 영역 대비 비율로 핸들 최소 크기 지정</summary>
             Ratio,
@@ -35,7 +35,7 @@ namespace RecycleScroll
             PixelSize,
         }
 
-        private enum eAxis
+        private enum Axis
         {
             Horizontal = 0,
             Vertical = 1
@@ -61,7 +61,7 @@ namespace RecycleScroll
         #region Serialized Fields - Core Scrollbar
 
         [SerializeField] private RectTransform m_HandleRect;
-        [SerializeField] private eDirection m_Direction = eDirection.LeftToRight;
+        [SerializeField] private Direction m_Direction = Direction.LeftToRight;
 
         [Range(0f, 1f)]
         [SerializeField] private float m_Value;
@@ -80,7 +80,7 @@ namespace RecycleScroll
         #region Serialized Fields - Fixed Handle Size
 
         [SerializeField] private bool m_useFixedHandleSize = false;
-        [SerializeField] private eFixedHandleSizeMode m_fixedHandleSizeMode = eFixedHandleSizeMode.Ratio;
+        [SerializeField] private FixedHandleSizeMode m_fixedHandleSizeMode = FixedHandleSizeMode.Ratio;
 
         [Range(0.01f, 1f)]
         [SerializeField] private float m_fixedHandleRatio = 0.1f;
@@ -147,7 +147,7 @@ namespace RecycleScroll
             }
         }
 
-        public eDirection direction
+        public Direction direction
         {
             get => m_Direction;
             set
@@ -213,8 +213,8 @@ namespace RecycleScroll
 
                 float fixedRatio = m_fixedHandleSizeMode switch
                 {
-                    eFixedHandleSizeMode.Ratio => m_fixedHandleRatio,
-                    eFixedHandleSizeMode.PixelSize => ScrollbarRectSize > 0f
+                    FixedHandleSizeMode.Ratio => m_fixedHandleRatio,
+                    FixedHandleSizeMode.PixelSize => ScrollbarRectSize > 0f
                         ? Mathf.Clamp01(m_fixedHandlePixelSize / ScrollbarRectSize)
                         : size,
                     _ => size,
@@ -228,11 +228,11 @@ namespace RecycleScroll
 
         private float stepSize => (m_NumberOfSteps > 1) ? 1f / (m_NumberOfSteps - 1) : 0.1f;
 
-        private eAxis axis => (m_Direction == Direction.LeftToRight || m_Direction == Direction.RightToLeft)
-            ? eAxis.Horizontal
-            : eAxis.Vertical;
+        private Axis axis => (m_Direction == Direction.LeftToRight || m_Direction == Direction.RightToLeft)
+            ? Axis.Horizontal
+            : Axis.Vertical;
 
-        private bool reverseValue => m_Direction == eDirection.RightToLeft || m_Direction == eDirection.TopToBottom;
+        private bool reverseValue => m_Direction == Direction.RightToLeft || m_Direction == Direction.TopToBottom;
 
         #endregion
 
@@ -263,8 +263,8 @@ namespace RecycleScroll
 
         private float ScrollbarRectSize => direction switch
         {
-            eDirection.LeftToRight or eDirection.RightToLeft => rectTransform.rect.size.x,
-            eDirection.BottomToTop or eDirection.TopToBottom => rectTransform.rect.size.y,
+            Direction.LeftToRight or Direction.RightToLeft => rectTransform.rect.size.x,
+            Direction.BottomToTop or Direction.TopToBottom => rectTransform.rect.size.y,
             _ => 0f,
         };
 
@@ -619,23 +619,23 @@ namespace RecycleScroll
             Vector2 handleCenterRelativeToContainerCorner = localCursor - m_Offset - m_ContainerRect.rect.position;
             Vector2 handleCorner = handleCenterRelativeToContainerCorner - (m_HandleRect.rect.size - m_HandleRect.sizeDelta) * 0.5f;
 
-            float parentSize = axis == eAxis.Horizontal ? m_ContainerRect.rect.width : m_ContainerRect.rect.height;
+            float parentSize = axis == Axis.Horizontal ? m_ContainerRect.rect.width : m_ContainerRect.rect.height;
             float remainingSize = parentSize * (1 - DisplaySize);
             if (remainingSize <= 0)
                 return;
 
             switch (m_Direction)
             {
-                case eDirection.LeftToRight:
+                case Direction.LeftToRight:
                     Set(Mathf.Clamp01(handleCorner.x / remainingSize));
                     break;
-                case eDirection.RightToLeft:
+                case Direction.RightToLeft:
                     Set(Mathf.Clamp01(1f - (handleCorner.x / remainingSize)));
                     break;
-                case eDirection.BottomToTop:
+                case Direction.BottomToTop:
                     Set(Mathf.Clamp01(handleCorner.y / remainingSize));
                     break;
-                case eDirection.TopToBottom:
+                case Direction.TopToBottom:
                     Set(Mathf.Clamp01(1f - (handleCorner.y / remainingSize)));
                     break;
             }
@@ -671,10 +671,10 @@ namespace RecycleScroll
             Vector2 delta = localCursor - m_PrevDragLocalCursor.Value;
             m_PrevDragLocalCursor = localCursor;
 
-            float axisDelta = axis == eAxis.Horizontal ? delta.x : delta.y;
+            float axisDelta = axis == Axis.Horizontal ? delta.x : delta.y;
             if (reverseValue) axisDelta = -axisDelta;
 
-            float parentSize = axis == eAxis.Horizontal ? m_ContainerRect.rect.width : m_ContainerRect.rect.height;
+            float parentSize = axis == Axis.Horizontal ? m_ContainerRect.rect.width : m_ContainerRect.rect.height;
             float remainingSize = parentSize * (1 - DisplaySize);
             if (remainingSize <= 0)
                 return;
@@ -713,7 +713,7 @@ namespace RecycleScroll
                     if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
                         m_HandleRect, screenPosition, camera, out var localMousePos))
                     {
-                        var axisCoordinate = axis == eAxis.Horizontal ? localMousePos.x : localMousePos.y;
+                        var axisCoordinate = axis == Axis.Horizontal ? localMousePos.x : localMousePos.y;
 
                         float change = axisCoordinate < 0 ? size : -size;
                         float newValue = value + (reverseValue ? change : -change);
@@ -749,7 +749,7 @@ namespace RecycleScroll
 
         #region Navigation
 
-        public override void OnMove(eAxisEventData eventData)
+        public override void OnMove(AxisEventData eventData)
         {
             if (!IsActive() || !IsInteractable())
             {
@@ -759,26 +759,26 @@ namespace RecycleScroll
 
             switch (eventData.moveDir)
             {
-                case MoveDirection.Left:
-                    if (axis == eAxis.Horizontal && FindSelectableOnLeft() == null)
+                case MovDirection.Left:
+                    if (axis == Axis.Horizontal && FindSelectableOnLeft() == null)
                         Set(Mathf.Clamp01(reverseValue ? value + stepSize : value - stepSize));
                     else
                         base.OnMove(eventData);
                     break;
-                case MoveDirection.Right:
-                    if (axis == eAxis.Horizontal && FindSelectableOnRight() == null)
+                case MovDirection.Right:
+                    if (axis == Axis.Horizontal && FindSelectableOnRight() == null)
                         Set(Mathf.Clamp01(reverseValue ? value - stepSize : value + stepSize));
                     else
                         base.OnMove(eventData);
                     break;
-                case MoveDirection.Up:
-                    if (axis == eAxis.Vertical && FindSelectableOnUp() == null)
+                case MovDirection.Up:
+                    if (axis == Axis.Vertical && FindSelectableOnUp() == null)
                         Set(Mathf.Clamp01(reverseValue ? value - stepSize : value + stepSize));
                     else
                         base.OnMove(eventData);
                     break;
-                case MoveDirection.Down:
-                    if (axis == eAxis.Vertical && FindSelectableOnDown() == null)
+                case MovDirection.Down:
+                    if (axis == Axis.Vertical && FindSelectableOnDown() == null)
                         Set(Mathf.Clamp01(reverseValue ? value + stepSize : value - stepSize));
                     else
                         base.OnMove(eventData);
@@ -788,28 +788,28 @@ namespace RecycleScroll
 
         public override Selectable FindSelectableOnLeft()
         {
-            if (navigation.mode == Navigation.Mode.Automatic && axis == eAxis.Horizontal)
+            if (navigation.mode == Navigation.Mode.Automatic && axis == Axis.Horizontal)
                 return null;
             return base.FindSelectableOnLeft();
         }
 
         public override Selectable FindSelectableOnRight()
         {
-            if (navigation.mode == Navigation.Mode.Automatic && axis == eAxis.Horizontal)
+            if (navigation.mode == Navigation.Mode.Automatic && axis == Axis.Horizontal)
                 return null;
             return base.FindSelectableOnRight();
         }
 
         public override Selectable FindSelectableOnUp()
         {
-            if (navigation.mode == Navigation.Mode.Automatic && axis == eAxis.Vertical)
+            if (navigation.mode == Navigation.Mode.Automatic && axis == Axis.Vertical)
                 return null;
             return base.FindSelectableOnUp();
         }
 
         public override Selectable FindSelectableOnDown()
         {
-            if (navigation.mode == Navigation.Mode.Automatic && axis == eAxis.Vertical)
+            if (navigation.mode == Navigation.Mode.Automatic && axis == Axis.Vertical)
                 return null;
             return base.FindSelectableOnDown();
         }
@@ -818,20 +818,20 @@ namespace RecycleScroll
 
         #region Direction Utility
 
-        public void SetDirection(eDirection direction, bool includeRectLayouts)
+        public void SetDirection(Direction direction, bool includeRectLayouts)
         {
-            eAxis oldeAxis = axis;
+            Axis oldAxis = axis;
             bool oldReverse = reverseValue;
             this.direction = direction;
 
             if (!includeRectLayouts)
                 return;
 
-            if (axis != oldeAxis)
+            if (axis != oldAxis)
                 RectTransformUtility.FlipLayoutAxes(transform as RectTransform, true, true);
 
             if (reverseValue != oldReverse)
-                RectTransformUtility.FlipLayoutOneAxis(transform as RectTransform, (int)axis, true, true);
+                RectTransformUtility.FlipLayoutOnAxis(transform as RectTransform, (int)axis, true, true);
         }
 
         #endregion

@@ -37,7 +37,7 @@ public partial class SerializableKeyValuePairDrawer
 #region ISerializableKVPDrawerStrategy
 public class ArrayPropertyDrawerStrategy : ISerializableKVPDrawerStrategy
 {
-    private ReorderableList reorderableList;
+    private ReorderableList m_reorderableList;
     
     public void DrawProperty(Rect position, Rect valueRect, SerializedProperty valueProperty)
     {
@@ -48,8 +48,8 @@ public class ArrayPropertyDrawerStrategy : ISerializableKVPDrawerStrategy
         
         EditorGUI.indentLevel++;
         position.y += EditorGUIUtility.singleLineHeight + 2f;
-        var listRect = new Rect(position.x, position.y, position.width, reorderableList.GetHeight());
-        reorderableList.DoList(listRect);
+        var listRect = new Rect(position.x, position.y, position.width, m_reorderableList.GetHeight());
+        m_reorderableList.DoList(listRect);
         EditorGUI.indentLevel--;
     }
 
@@ -57,21 +57,21 @@ public class ArrayPropertyDrawerStrategy : ISerializableKVPDrawerStrategy
     {
         InitializeReorderableList(valueProperty);
         
-        if (valueProperty.isExpanded) return reorderableList.GetHeight() + EditorGUIUtility.singleLineHeight + 2f;
+        if (valueProperty.isExpanded) return m_reorderableList.GetHeight() + EditorGUIUtility.singleLineHeight + 2f;
         return EditorGUIUtility.singleLineHeight;
     }
     
     private void InitializeReorderableList(SerializedProperty valueProperty)
     {
-        reorderableList ??= new ReorderableList(valueProperty.serializedObject, valueProperty, true, false, true, true);
-        reorderableList.serializedProperty = valueProperty;
+        m_reorderableList ??= new ReorderableList(valueProperty.serializedObject, valueProperty, true, false, true, true);
+        m_reorderableList.serializedProperty = valueProperty;
         
-        reorderableList.drawHeaderCallback = rect =>
+        m_reorderableList.drawHeaderCallback = rect =>
         {
             EditorGUI.LabelField(rect, valueProperty.displayName);
         };
         
-        reorderableList.drawElementCallback = (rect, index, isActive, isFocused) =>
+        m_reorderableList.drawElementCallback = (rect, index, isActive, isFocused) =>
         {
             var element = valueProperty.GetArrayElementAtIndex(index);
             rect.y += 2f;
@@ -86,20 +86,20 @@ public class ArrayPropertyDrawerStrategy : ISerializableKVPDrawerStrategy
             EditorGUI.PropertyField(fieldRect, element, GUIContent.none, true);
         };
         
-        reorderableList.elementHeightCallback = index =>
+        m_reorderableList.elementHeightCallback = index =>
         {
             var element = valueProperty.GetArrayElementAtIndex(index);
             return EditorGUI.GetPropertyHeight(element, GUIContent.none, true) + 4; // 요소 간 간격 추가
         };
         
-        reorderableList.onAddCallback = _ =>
+        m_reorderableList.onAddCallback = _ =>
         {
             valueProperty.arraySize++;
         };
         
-        reorderableList.onRemoveCallback = reorderableList =>
+        m_reorderableList.onRemoveCallback = m_reorderableList =>
         {
-            valueProperty.DeleteArrayElementAtIndex(reorderableList.index);
+            valueProperty.DeleteArrayElementAtIndex(m_reorderableList.index);
         };
     }
 }

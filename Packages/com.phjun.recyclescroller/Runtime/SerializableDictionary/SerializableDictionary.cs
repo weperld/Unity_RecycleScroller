@@ -32,10 +32,10 @@ namespace CustomSerialization
         ISerializationCallbackReceiver
     {
         [SerializeField] private List<SerializableKeyValuePair<TKey, TValue>> _keyValuePairs = new();
-        private Dictionary<TKey, TValue> _dictionary = new();
+        private Dictionary<TKey, TValue> m_dictionary = new();
         
-        public ICollection<TKey> Keys => _dictionary.Keys;
-        public ICollection<TValue> Values => _dictionary.Values;
+        public ICollection<TKey> Keys => m_dictionary.Keys;
+        public ICollection<TValue> Values => m_dictionary.Values;
         
         IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => Values;
         IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => Keys;
@@ -44,33 +44,33 @@ namespace CustomSerialization
         {
             get
             {
-                if (_dictionary.TryGetValue(key, out var item) == false) throw new KeyNotFoundException();
+                if (m_dictionary.TryGetValue(key, out var item) == false) throw new KeyNotFoundException();
                 return item;
             }
             set
             {
-                //if (_dictionary.ContainsKey(key) == false) throw new KeyNotFoundException();
+                //if (m_dictionary.ContainsKey(key) == false) throw new KeyNotFoundException();
                 
-                _dictionary[key] = value;
+                m_dictionary[key] = value;
                 var index = _keyValuePairs.FindIndex(kvp => kvp.Key.Equals(key));
                 if (index >= 0) _keyValuePairs[index] = new SerializableKeyValuePair<TKey, TValue>(key, value);
                 else _keyValuePairs.Add(new SerializableKeyValuePair<TKey, TValue>(key, value));
             }
         }
         
-        public int Count => _dictionary.Count;
+        public int Count => m_dictionary.Count;
         public bool IsReadOnly => false;
         
         #region IDictionary 인터페이스 함수 구현
         public void Add(TKey key, TValue value)
         {
-            _dictionary.Add(key, value);
+            m_dictionary.Add(key, value);
             _keyValuePairs.Add(new SerializableKeyValuePair<TKey, TValue>(key, value));
         }
         
         public bool Remove(TKey key)
         {
-            if (_dictionary.Remove(key) == false) return false;
+            if (m_dictionary.Remove(key) == false) return false;
             
             var index = _keyValuePairs.FindIndex(kvp => EqualityComparer<TKey>.Default.Equals(kvp.Key, key));
             if (index >= 0) _keyValuePairs.RemoveAt(index);
@@ -79,17 +79,17 @@ namespace CustomSerialization
         
         public bool ContainsKey(TKey key)
         {
-            return _dictionary.ContainsKey(key);
+            return m_dictionary.ContainsKey(key);
         }
         
         public bool TryGetValue(TKey key, out TValue value)
         {
-            return _dictionary.TryGetValue(key, out value);
+            return m_dictionary.TryGetValue(key, out value);
         }
         
         public void Clear()
         {
-            _dictionary.Clear();
+            m_dictionary.Clear();
             _keyValuePairs.Clear();
         }
         
@@ -100,12 +100,12 @@ namespace CustomSerialization
         
         public bool Contains(KeyValuePair<TKey, TValue> item)
         {
-            return _dictionary.Contains(item);
+            return m_dictionary.Contains(item);
         }
         
         public void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex)
         {
-            ((ICollection<KeyValuePair<TKey, TValue>>)_dictionary).CopyTo(array, arrayIndex);
+            ((ICollection<KeyValuePair<TKey, TValue>>)m_dictionary).CopyTo(array, arrayIndex);
         }
         
         public bool Remove(KeyValuePair<TKey, TValue> item)
@@ -115,7 +115,7 @@ namespace CustomSerialization
         
         public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
         {
-            return _dictionary.GetEnumerator();
+            return m_dictionary.GetEnumerator();
         }
         IEnumerator IEnumerable.GetEnumerator() { return GetEnumerator(); }
         #endregion
@@ -124,22 +124,22 @@ namespace CustomSerialization
         public void OnBeforeSerialize()
         {
             _keyValuePairs.Clear();
-            foreach (var kvp in _dictionary)
+            foreach (var kvp in m_dictionary)
             {
                 _keyValuePairs.Add(new SerializableKeyValuePair<TKey, TValue>(kvp.Key, kvp.Value));
             }
         }
         public void OnAfterDeserialize()
         {
-            _dictionary = _keyValuePairs.ToDictionary(x => x.Key, x => x.Value);
+            m_dictionary = _keyValuePairs.ToDictionary(x => x.Key, x => x.Value);
         }
         #endregion
         
-        public bool TryAdd(TKey key, TValue value) => _dictionary.TryAdd(key, value);
+        public bool TryAdd(TKey key, TValue value) => m_dictionary.TryAdd(key, value);
         
         public override string ToString()
         {
-            return $"{{ {string.Join(", ", _dictionary.Select(kvp => $"{kvp.Key}: {kvp.Value}"))} }}";
+            return $"{{ {string.Join(", ", m_dictionary.Select(kvp => $"{kvp.Key}: {kvp.Value}"))} }}";
         }
     }
 }

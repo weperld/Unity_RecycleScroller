@@ -203,6 +203,6 @@ Unity Editor 메뉴:
 - **private 필드**: m_ 접두사 + camelCase (예: m_scrollRect)
 - **인터페이스**: I 접두사 + PascalCase (예: IRecycleScrollerDelegate)
 - **부분 클래스 파일**: ClassName_Responsibility.cs (예: RecycleScroller_Functions.cs)
-- **열거형**: e 접두사 + PascalCase (예: eScrollAxis)
+- **열거형**: PascalCase (예: ScrollAxis)
 - **상수**: UPPER_SNAKE_CASE (예: DEFAULT_POOL_SUBKEY)
 - **네임스페이스**: PascalCase (예: RecycleScroll, CustomSerialization)

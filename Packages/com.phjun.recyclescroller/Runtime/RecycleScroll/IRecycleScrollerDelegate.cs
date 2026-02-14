@@ -19,17 +19,17 @@ namespace RecycleScroll
     {
         private struct Value
         {
-            private float val;
-            private float scale;
-            
-            public float Val => val;
-            public float Scale => scale;
-            public float ScaledVal => val * scale;
-            
+            private float m_val;
+            private float m_scale;
+
+            public float Val => m_val;
+            public float Scale => m_scale;
+            public float ScaledVal => m_val * m_scale;
+
             public Value(float val, float scale)
             {
-                this.val = val;
-                this.scale = scale;
+                this.m_val = val;
+                this.m_scale = scale;
             }
         }
         

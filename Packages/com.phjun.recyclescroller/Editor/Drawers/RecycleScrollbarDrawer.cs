@@ -134,7 +134,7 @@ public class RecycleScrollbarEditor : SelectableEditor
             EditorGUILayout.Space(2f);
 
             EditorGUILayout.PropertyField(m_fixedHandleSizeMode, new GUIContent("Size Mode"));
-            if (m_fixedHandleSizeMode.enumValueIndex == (int)RecycleScrollbar.eFixedHandleSizeMode.Ratio)
+            if (m_fixedHandleSizeMode.enumValueIndex == (int)RecycleScrollbar.FixedHandleSizeMode.Ratio)
                 EditorGUILayout.PropertyField(m_fixedHandleRatio, new GUIContent("Min Ratio", "스크롤바 영역 대비 핸들 최소 비율 (0.01 ~ 1)"));
             else
                 EditorGUILayout.PropertyField(m_fixedHandlePixelSize, new GUIContent("Min Pixel Size", "핸들 최소 픽셀 크기"));
