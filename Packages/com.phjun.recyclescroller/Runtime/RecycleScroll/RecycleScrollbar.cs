@@ -375,6 +375,8 @@ namespace RecycleScroll
             }
         }
 
+        private void SetWithSendCallback(float input) => Set(input, true);
+
         /// <summary>
         /// value 변경 시 루프 스크롤바 관련 시각적 업데이트 및 OnLoopValueChanged 이벤트를 발사합니다.
         /// Set()에서 sendCallback=true일 때 자동으로 호출되므로 인스펙터 등록이 필요하지 않습니다.
@@ -480,7 +482,7 @@ namespace RecycleScroll
             if (m_containerRect != null)
             {
                 ScrollbarMode.ProcessDrag(eventData, m_containerRect, m_handleRect,
-                    DisplaySize, m_value, (int)_Axis, ReverseValue, Set);
+                    DisplaySize, m_value, (int)_Axis, ReverseValue, SetWithSendCallback);
             }
         }
 
