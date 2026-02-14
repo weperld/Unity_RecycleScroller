@@ -98,7 +98,12 @@ namespace RecycleScroll
 
         [SerializeField] private RectTransform m_leftHandle;
         [SerializeField] private RectTransform m_rightHandle;
-        [SerializeField] private Graphic[] m_graphics;
+
+        #endregion
+
+        #region Serialized Fields - Extra Transitions
+
+        [SerializeField] private ExtraTransitionEntry[] m_extraTransitions;
 
         #endregion
 
@@ -126,6 +131,9 @@ namespace RecycleScroll
         private IRecycleScrollbarDelegate m_del;
         private IScrollbarMode m_scrollbarMode;
         private IScrollbarMode ScrollbarMode => m_scrollbarMode ??= new NormalScrollbarMode();
+
+        /// <summary>메인 핸들 그래픽과 매칭된 서브 핸들 트랜지션 (자동 감지)</summary>
+        private SubHandleTransitionEntry[] m_subHandleTransitions;
 
         #endregion
 
@@ -438,9 +446,8 @@ namespace RecycleScroll
                 var result = ScrollbarMode.CalculateHandleAnchors(
                     displaySize, Value, Size, m_del, (int)_Axis, ReverseValue);
 
-                // 서브 핸들 wrap 업데이트 (루프 모드에서 메인 핸들이 경계를 넘을 때)
-                if (result.HasWrap)
-                    UpdateLoopHandles(result.StartWrap, result.EndWrap);
+                // 서브 핸들 wrap 업데이트 (루프 모드: 경계 넘으면 표시, 아니면 비활성화)
+                UpdateLoopHandles(result.StartWrap, result.EndWrap);
 
                 m_handleRect.anchorMin = result.AnchorMin;
                 m_handleRect.anchorMax = result.AnchorMax;
@@ -749,8 +756,8 @@ namespace RecycleScroll
             m_leftHandle.SetParent(HandleContainerRect);
             m_rightHandle.SetParent(HandleContainerRect);
 
-            // 서브 핸들의 Graphic을 m_graphics에 동적 등록 (DoStateTransition 색상 연동)
-            RegisterSubHandleGraphics();
+            // 서브 핸들 중 메인 핸들과 매칭되는 Graphic만 트랜지션 대상으로 등록
+            BuildSubHandleTransitionGraphics();
 
             ResetSubHandlesPosition();
             return;
@@ -764,27 +771,86 @@ namespace RecycleScroll
         }
 
         /// <summary>
-        /// 서브 핸들의 Graphic 컴포넌트를 m_graphics 배열에 등록합니다.
-        /// DoStateTransition()에서 색상/스프라이트 전환이 서브 핸들에도 적용되도록 합니다.
+        /// Selectable의 targetGraphic 또는 ExtraTransitionEntry가 메인 핸들(또는 자식)에 있는 경우,
+        /// 서브 핸들에서 동일 위치의 Graphic을 찾아 동일한 트랜지션 설정과 함께 등록합니다.
         /// </summary>
-        private void RegisterSubHandleGraphics()
+        private void BuildSubHandleTransitionGraphics()
         {
-            m_graphics ??= Array.Empty<Graphic>();
-
-            var newGraphics = new System.Collections.Generic.List<Graphic>(m_graphics);
-
-            RegisterGraphic(m_leftHandle);
-            RegisterGraphic(m_rightHandle);
-
-            m_graphics = newGraphics.ToArray();
-            return;
-
-            void RegisterGraphic(RectTransform subHandle)
+            if (HandleRect == null)
             {
-                if (subHandle == null) return;
-                var graphic = subHandle.GetComponent<Graphic>();
-                if (graphic != null && !newGraphics.Contains(graphic))
-                    newGraphics.Add(graphic);
+                m_subHandleTransitions = null;
+                return;
+            }
+
+            var mainGraphics = HandleRect.GetComponentsInChildren<Graphic>(true);
+            if (mainGraphics.Length == 0)
+            {
+                m_subHandleTransitions = null;
+                return;
+            }
+
+            // 메인 핸들 그래픽 중 참조된 것의 인덱스 + 트랜지션 설정 수집
+            var matched = new System.Collections.Generic.List<(int index, Transition transition, ColorBlock colors, SpriteState spriteState)>();
+
+            for (int i = 0; i < mainGraphics.Length; i++)
+            {
+                var g = mainGraphics[i];
+
+                // base Selectable의 targetGraphic과 매칭
+                if (g == targetGraphic)
+                {
+                    matched.Add((i, transition, colors, spriteState));
+                    continue;
+                }
+
+                // ExtraTransitionEntry와 매칭
+                if (m_extraTransitions != null)
+                {
+                    foreach (var entry in m_extraTransitions)
+                    {
+                        if (entry != null && entry.TargetGraphic == g)
+                        {
+                            matched.Add((i, entry.AsSelectableTransition, entry.Colors, entry.SpriteState));
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (matched.Count == 0)
+            {
+                m_subHandleTransitions = null;
+                return;
+            }
+
+            // 각 서브 핸들에서 동일 인덱스의 Graphic을 수집하고 트랜지션 설정 복사
+            var result = new System.Collections.Generic.List<SubHandleTransitionEntry>();
+            CollectSubHandleTransitions(m_leftHandle, matched, result);
+            CollectSubHandleTransitions(m_rightHandle, matched, result);
+
+            m_subHandleTransitions = result.Count > 0 ? result.ToArray() : null;
+        }
+
+        private static void CollectSubHandleTransitions(
+            RectTransform subHandle,
+            System.Collections.Generic.List<(int index, Transition transition, ColorBlock colors, SpriteState spriteState)> matched,
+            System.Collections.Generic.List<SubHandleTransitionEntry> output)
+        {
+            if (subHandle == null) return;
+
+            var subGraphics = subHandle.GetComponentsInChildren<Graphic>(true);
+            foreach (var (index, trans, col, spr) in matched)
+            {
+                if (index < subGraphics.Length && subGraphics[index] != null)
+                {
+                    output.Add(new SubHandleTransitionEntry
+                    {
+                        Graphic = subGraphics[index],
+                        TransitionType = trans,
+                        Colors = col,
+                        SpriteState = spr
+                    });
+                }
             }
         }
 
@@ -798,69 +864,108 @@ namespace RecycleScroll
             if (!gameObject.activeInHierarchy)
                 return;
 
-            Color tintColor;
-            Sprite transitionSprite;
-
-            switch (state)
+            // Extra Transitions: 각 항목의 독립적인 트랜지션 설정 적용
+            if (m_extraTransitions != null)
             {
-                case SelectionState.Normal:
-                    tintColor = colors.normalColor;
-                    transitionSprite = null;
-                    break;
-                case SelectionState.Highlighted:
-                    tintColor = colors.highlightedColor;
-                    transitionSprite = spriteState.highlightedSprite;
-                    break;
-                case SelectionState.Pressed:
-                    tintColor = colors.pressedColor;
-                    transitionSprite = spriteState.pressedSprite;
-                    break;
-                case SelectionState.Selected:
-                    tintColor = colors.selectedColor;
-                    transitionSprite = spriteState.selectedSprite;
-                    break;
-                case SelectionState.Disabled:
-                    tintColor = colors.disabledColor;
-                    transitionSprite = spriteState.disabledSprite;
-                    break;
-                default:
-                    tintColor = Color.black;
-                    transitionSprite = null;
-                    break;
+                foreach (var entry in m_extraTransitions)
+                {
+                    if (entry?.TargetGraphic == null) continue;
+                    ApplyTransitionToGraphic(entry.TargetGraphic, state,
+                        entry.AsSelectableTransition, entry.Colors, entry.SpriteState, instant);
+                }
             }
 
-            switch (transition)
+            // 서브 핸들 트랜지션: 매칭된 소스의 설정을 그대로 적용
+            if (m_subHandleTransitions != null)
+            {
+                foreach (var sub in m_subHandleTransitions)
+                {
+                    if (sub.Graphic == null) continue;
+                    ApplyTransitionToGraphic(sub.Graphic, state,
+                        sub.TransitionType, sub.Colors, sub.SpriteState, instant);
+                }
+            }
+        }
+
+        private static void ApplyTransitionToGraphic(
+            Graphic graphic, SelectionState state,
+            Transition transitionType, ColorBlock colorBlock, SpriteState sprState, bool instant)
+        {
+            switch (transitionType)
             {
                 case Transition.ColorTint:
-                    StartColorTween(tintColor * colors.colorMultiplier, instant);
+                    Color tintColor = state switch
+                    {
+                        SelectionState.Normal => colorBlock.normalColor,
+                        SelectionState.Highlighted => colorBlock.highlightedColor,
+                        SelectionState.Pressed => colorBlock.pressedColor,
+                        SelectionState.Selected => colorBlock.selectedColor,
+                        SelectionState.Disabled => colorBlock.disabledColor,
+                        _ => Color.black,
+                    };
+                    graphic.CrossFadeColor(tintColor * colorBlock.colorMultiplier,
+                        instant ? 0f : colorBlock.fadeDuration, true, true);
                     break;
+
                 case Transition.SpriteSwap:
-                    DoSpriteSwap(transitionSprite);
+                    if (graphic is Image img)
+                    {
+                        Sprite sprite = state switch
+                        {
+                            SelectionState.Highlighted => sprState.highlightedSprite,
+                            SelectionState.Pressed => sprState.pressedSprite,
+                            SelectionState.Selected => sprState.selectedSprite,
+                            SelectionState.Disabled => sprState.disabledSprite,
+                            _ => null,
+                        };
+                        img.overrideSprite = sprite;
+                    }
                     break;
-            }
-        }
-
-        private void StartColorTween(Color targetColor, bool instant)
-        {
-            if (m_graphics == null) return;
-
-            foreach (var graphic in m_graphics)
-                graphic.CrossFadeColor(targetColor, instant ? 0f : colors.fadeDuration, true, true);
-        }
-
-        private void DoSpriteSwap(Sprite newSprite)
-        {
-            if (m_graphics == null) return;
-
-            foreach (var graphic in m_graphics)
-            {
-                var graphicImg = graphic as Image;
-                if (graphicImg == null) continue;
-
-                graphicImg.overrideSprite = newSprite;
             }
         }
 
         #endregion
+    }
+
+    public enum eExtraTransition
+    {
+        ColorTint = 0,
+        SpriteSwap = 1,
+    }
+
+    /// <summary>
+    /// Selectable의 단일 targetGraphic 제한을 확장하여 추가 그래픽에 독립적인 트랜지션을 적용합니다.
+    /// 각 항목은 자체 Transition Type, ColorBlock, SpriteState를 가집니다.
+    /// </summary>
+    [Serializable]
+    public class ExtraTransitionEntry
+    {
+        [SerializeField] private Graphic m_targetGraphic;
+        [SerializeField] private eExtraTransition m_transition = eExtraTransition.ColorTint;
+        [SerializeField] private ColorBlock m_colors = ColorBlock.defaultColorBlock;
+        [SerializeField] private SpriteState m_spriteState;
+
+        public Graphic TargetGraphic => m_targetGraphic;
+        public eExtraTransition TransitionType => m_transition;
+        public ColorBlock Colors => m_colors;
+        public SpriteState SpriteState => m_spriteState;
+
+        public Selectable.Transition AsSelectableTransition => m_transition switch
+        {
+            eExtraTransition.ColorTint => Selectable.Transition.ColorTint,
+            eExtraTransition.SpriteSwap => Selectable.Transition.SpriteSwap,
+            _ => Selectable.Transition.ColorTint,
+        };
+    }
+
+    /// <summary>
+    /// 서브 핸들에 적용할 트랜지션 정보. 매칭된 소스 그래픽의 설정을 복사하여 보유합니다.
+    /// </summary>
+    internal struct SubHandleTransitionEntry
+    {
+        public Graphic Graphic;
+        public Selectable.Transition TransitionType;
+        public ColorBlock Colors;
+        public SpriteState SpriteState;
     }
 }
