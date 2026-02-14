@@ -7,7 +7,7 @@ using CustomSerialization;
 [CustomPropertyDrawer(typeof(SerializableDictionary<,>), true)]
 public class SerializableDictionaryDrawer : PropertyDrawer
 {
-    private ReorderableList reorderableList;
+    private ReorderableList m_reorderableList;
 
     private const float ClearButtonPadding = 5f;
     private const float ClearButtonWidth = 60f;
@@ -16,10 +16,10 @@ public class SerializableDictionaryDrawer : PropertyDrawer
         + "Please use a wrapper class to serialize this type.";
 
     // 새 항목 추가 UI 표시 여부
-    private bool showAddEntryUI = false;
+    private bool m_showAddEntryUI = false;
 
     // 새로 추가할 Key 임시 저장
-    private object currentKeyInput;
+    private object m_currentKeyInput;
 
     private Type KeyType => GetBaseGenericArguments()[0];
     private Type ValueType => GetBaseGenericArguments()[1];
@@ -131,8 +131,8 @@ public class SerializableDictionaryDrawer : PropertyDrawer
         );
         offsetY += EditorGUIUtility.singleLineHeight + 4;
 
-        // showAddEntryUI에 따라 박스를 표시할지 결정
-        if (showAddEntryUI)
+        // m_showAddEntryUI에 따라 박스를 표시할지 결정
+        if (m_showAddEntryUI)
         {
             // 박스 높이
             float boxHeight = EditorGUIUtility.singleLineHeight * 3 + 12;
@@ -152,7 +152,7 @@ public class SerializableDictionaryDrawer : PropertyDrawer
         }
         else
         {
-            // showAddEntryUI가 false면 "Add New Entry" 버튼만
+            // m_showAddEntryUI가 false면 "Add New Entry" 버튼만
             DrawAddNewEntryButton(addEntryBtnRect);
         }
 
@@ -161,9 +161,9 @@ public class SerializableDictionaryDrawer : PropertyDrawer
 
     private void DrawAddNewEntryButton(Rect position)
     {
-        if (GUI.Button(position, showAddEntryUI ? "Hide Add Entry" : "Add New Entry"))
+        if (GUI.Button(position, m_showAddEntryUI ? "Hide Add Entry" : "Add New Entry"))
         {
-            showAddEntryUI = !showAddEntryUI;
+            m_showAddEntryUI = !m_showAddEntryUI;
         }
     }
 
@@ -195,7 +195,7 @@ public class SerializableDictionaryDrawer : PropertyDrawer
             innerWidth,
             EditorGUIUtility.singleLineHeight
         );
-        currentKeyInput = DrawSerializedPropertyTypeField(keyFieldRect, KeyType, currentKeyInput, "New Key");
+        m_currentKeyInput = DrawSerializedPropertyTypeField(keyFieldRect, KeyType, m_currentKeyInput, "New Key");
         innerY += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 
         // (C) "Confirm Add" 버튼
@@ -207,7 +207,7 @@ public class SerializableDictionaryDrawer : PropertyDrawer
         );
         if (GUI.Button(confirmRect, "Confirm Add"))
         {
-            AddCustomEntry(property, currentKeyInput);
+            AddCustomEntry(property, m_currentKeyInput);
         }
     }
 
@@ -379,11 +379,11 @@ public class SerializableDictionaryDrawer : PropertyDrawer
             position.x,
             offsetY,
             position.width,
-            reorderableList.GetHeight()
+            m_reorderableList.GetHeight()
         );
-        reorderableList.DoList(listRect);
+        m_reorderableList.DoList(listRect);
 
-        offsetY += reorderableList.GetHeight();
+        offsetY += m_reorderableList.GetHeight();
         return offsetY;
     }
 
@@ -391,9 +391,9 @@ public class SerializableDictionaryDrawer : PropertyDrawer
     {
         var keyValuePairsProperty = property.FindPropertyRelative("_keyValuePairs");
 
-        if (reorderableList == null)
+        if (m_reorderableList == null)
         {
-            reorderableList = new ReorderableList(
+            m_reorderableList = new ReorderableList(
                 keyValuePairsProperty.serializedObject,
                 keyValuePairsProperty,
                 true,  // draggable
@@ -402,12 +402,12 @@ public class SerializableDictionaryDrawer : PropertyDrawer
                 true   // show remove button
             );
 
-            reorderableList.drawHeaderCallback = rect =>
+            m_reorderableList.drawHeaderCallback = rect =>
             {
                 EditorGUI.LabelField(rect, $"Key: {KeyType.Name} / Value: {ValueType.Name}");
             };
 
-            reorderableList.drawElementCallback = (rect, index, _, _) =>
+            m_reorderableList.drawElementCallback = (rect, index, _, _) =>
             {
                 var element = keyValuePairsProperty.GetArrayElementAtIndex(index);
                 rect.y += 2;
@@ -419,22 +419,22 @@ public class SerializableDictionaryDrawer : PropertyDrawer
                 kvpDrawer.OnGUI(keyValuePairRect, element, GUIContent.none);
             };
 
-            reorderableList.elementHeightCallback = index =>
+            m_reorderableList.elementHeightCallback = index =>
             {
                 var element = keyValuePairsProperty.GetArrayElementAtIndex(index);
                 var kvpDrawer = new SerializableKeyValuePairDrawer();
                 return kvpDrawer.GetPropertyHeight(element, GUIContent.none) + 8f;
             };
 
-            reorderableList.onAddCallback = _ => { };
-            reorderableList.onRemoveCallback = list =>
+            m_reorderableList.onAddCallback = _ => { };
+            m_reorderableList.onRemoveCallback = list =>
             {
                 keyValuePairsProperty.DeleteArrayElementAtIndex(list.index);
             };
         }
         else
         {
-            reorderableList.serializedProperty = keyValuePairsProperty;
+            m_reorderableList.serializedProperty = keyValuePairsProperty;
         }
     }
 
@@ -631,7 +631,7 @@ public class SerializableDictionaryDrawer : PropertyDrawer
             Undo.RecordObject(property.serializedObject.targetObject, "Clear SerializableDictionary");
             keyValuePairs.arraySize = 0;
             property.serializedObject.ApplyModifiedProperties();
-            reorderableList = null;
+            m_reorderableList = null;
         }
 
         GUI.enabled = true;
@@ -661,14 +661,14 @@ public class SerializableDictionaryDrawer : PropertyDrawer
         totalH += (EditorGUIUtility.singleLineHeight + 4);
 
         // 박스 영역
-        if (showAddEntryUI)
+        if (m_showAddEntryUI)
         {
             float boxH = EditorGUIUtility.singleLineHeight * 3 + 12;
             totalH += boxH + 4;
         }
 
         // ReorderableList
-        totalH += reorderableList.GetHeight();
+        totalH += m_reorderableList.GetHeight();
 
         return totalH;
     }

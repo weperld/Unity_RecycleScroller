@@ -5,11 +5,11 @@ using UnityEngine;
 public class HelpBoxAutoAttribute : PropertyAttribute
 {
     public string Message { get; private set; }
-    public HelpBoxMessageType MessageType { get; private set; }
+    public eHelpBoxMessageType MessageType { get; private set; }
     public Color TextColor { get; private set; }
 
     public HelpBoxAutoAttribute(string message,
-        HelpBoxMessageType messageType = HelpBoxMessageType.Warning,
+        eHelpBoxMessageType messageType = eHelpBoxMessageType.Warning,
         string hexColor = "#FFFFFF")
     {
         Message = message;

@@ -62,7 +62,7 @@ using UnityEngine;
 
 namespace EaseUtil
 {
-    public enum Ease
+    public enum eEase
     {
         EaseInQuad = 0,
         EaseOutQuad,
@@ -774,12 +774,12 @@ namespace EaseUtil
 
         #endregion
 
-        private static readonly Dictionary<Ease, Function> m_cache = new();
-        private static readonly Dictionary<Ease, Function> m_cache_Derivative = new();
+        private static readonly Dictionary<eEase, Function> m_cache = new();
+        private static readonly Dictionary<eEase, Function> m_cache_Derivative = new();
 
         public delegate float Function(float s, float e, float v);
 
-        private static bool TryGetFunction_Base(Ease easing, string methodName, Dictionary<Ease, Function> cacheDict, out Function func)
+        private static bool TryGetFunction_Base(eEase easing, string methodName, Dictionary<eEase, Function> cacheDict, out Function func)
         {
             if (cacheDict.TryGetValue(easing, out func)) return true;
 
@@ -794,9 +794,9 @@ namespace EaseUtil
             cacheDict.TryAdd(easing, func);
             return true;
         }
-        private static bool TryGetFunction(Ease easing, out Function func)
+        private static bool TryGetFunction(eEase easing, out Function func)
             => TryGetFunction_Base(easing, easing.ToString(), m_cache, out func);
-        private static bool TryGetDerivativeFunction(Ease easing, out Function func)
+        private static bool TryGetDerivativeFunction(eEase easing, out Function func)
             => TryGetFunction_Base(easing, easing.ToString() + "D", m_cache_Derivative, out func);
 
         #region Extension Methods
@@ -809,7 +809,7 @@ namespace EaseUtil
         /// </summary>
         /// <param name="easingFunction">The enum associated with the easing function.</param>
         /// <returns>The easing function</returns>
-        public static Function GetEasingFunction(this Ease easingFunction)
+        public static Function GetEasingFunction(this eEase easingFunction)
             => TryGetFunction(easingFunction, out var func) ? func : Linear;
 
         /// <summary>
@@ -818,7 +818,7 @@ namespace EaseUtil
         /// </summary>
         /// <param name="easingFunction"></param>
         /// <returns>The derivative function</returns>
-        public static Function GetDerivativeEasingFunction(this Ease easingFunction)
+        public static Function GetDerivativeEasingFunction(this eEase easingFunction)
             => TryGetDerivativeFunction(easingFunction, out var func) ? func : LinearD;
 
         #endregion
@@ -835,7 +835,7 @@ namespace EaseUtil
         /// <param name="end"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public static float Evaluate(this Ease function, float start, float end, float value)
+        public static float Evaluate(this eEase function, float start, float end, float value)
         {
             var func = function.GetEasingFunction();
             if (func is null) return end;
@@ -849,7 +849,7 @@ namespace EaseUtil
         /// <param name="end"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public static float EvaluateDerivative(this Ease function, float start, float end, float value)
+        public static float EvaluateDerivative(this eEase function, float start, float end, float value)
         {
             var func = function.GetDerivativeEasingFunction();
             if (func is null) return 0f;
@@ -860,11 +860,11 @@ namespace EaseUtil
 
         #region Vector2
 
-        public static Vector2 Evaluate(this Ease function, Vector2 start, Vector2 end, float value)
+        public static Vector2 Evaluate(this eEase function, Vector2 start, Vector2 end, float value)
         {
             return new Vector2(function.Evaluate(start.x, end.x, value), function.Evaluate(start.y, end.y, value));
         }
-        public static Vector2 EvaluateDerivative(this Ease function, Vector2 start, Vector2 end, float value)
+        public static Vector2 EvaluateDerivative(this eEase function, Vector2 start, Vector2 end, float value)
         {
             return new Vector2(function.EvaluateDerivative(start.x, end.x, value), function.EvaluateDerivative(start.y, end.y, value));
         }
@@ -873,13 +873,13 @@ namespace EaseUtil
 
         #region Vector3
 
-        public static Vector3 Evaluate(this Ease function, Vector3 start, Vector3 end, float value)
+        public static Vector3 Evaluate(this eEase function, Vector3 start, Vector3 end, float value)
         {
             return new Vector3(function.Evaluate(start.x, end.x, value),
                 function.Evaluate(start.y, end.y, value),
                 function.Evaluate(start.z, end.z, value));
         }
-        public static Vector3 EvaluateDerivative(this Ease function, Vector3 start, Vector3 end, float value)
+        public static Vector3 EvaluateDerivative(this eEase function, Vector3 start, Vector3 end, float value)
         {
             return new Vector3(function.EvaluateDerivative(start.x, end.x, value),
                 function.EvaluateDerivative(start.y, end.y, value),
@@ -890,14 +890,14 @@ namespace EaseUtil
 
         #region Vector4
 
-        public static Vector4 Evaluate(this Ease function, Vector4 start, Vector4 end, float value)
+        public static Vector4 Evaluate(this eEase function, Vector4 start, Vector4 end, float value)
         {
             return new Vector4(function.Evaluate(start.x, end.x, value),
                 function.Evaluate(start.y, end.y, value),
                 function.Evaluate(start.z, end.z, value),
                 function.Evaluate(start.w, end.w, value));
         }
-        public static Vector4 EvaluateDerivative(this Ease function, Vector4 start, Vector4 end, float value)
+        public static Vector4 EvaluateDerivative(this eEase function, Vector4 start, Vector4 end, float value)
         {
             return new Vector4(function.EvaluateDerivative(start.x, end.x, value),
                 function.EvaluateDerivative(start.y, end.y, value),
@@ -909,14 +909,14 @@ namespace EaseUtil
 
         #region Color
 
-        public static Color Evaluate(this Ease function, Color start, Color end, float value)
+        public static Color Evaluate(this eEase function, Color start, Color end, float value)
         {
             return new Color(function.Evaluate(start.r, end.r, value),
                 function.Evaluate(start.g, end.g, value),
                 function.Evaluate(start.b, end.b, value),
                 function.Evaluate(start.a, end.a, value));
         }
-        public static Color EvaluateDerivative(this Ease function, Color start, Color end, float value)
+        public static Color EvaluateDerivative(this eEase function, Color start, Color end, float value)
         {
             return new Color(function.EvaluateDerivative(start.r, end.r, value),
                 function.EvaluateDerivative(start.g, end.g, value),

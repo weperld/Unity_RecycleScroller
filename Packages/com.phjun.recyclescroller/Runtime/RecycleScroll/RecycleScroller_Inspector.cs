@@ -28,7 +28,7 @@ namespace RecycleScroll
         #region Fit Content Size To Viewport Size When Smaller
 
         [Space(10f), ColoredHeader("[Content Size Fit To Viewport Size When Smaller]", ColorHexTemplate.CT_HEX_FFFF99)]
-        [HelpBoxAuto("계산된 콘텐트의 사이즈가 뷰포트 사이즈보다 작은 경우 이를 뷰포트에 맞춥니다", HelpBoxMessageType.Info)]
+        [HelpBoxAuto("계산된 콘텐트의 사이즈가 뷰포트 사이즈보다 작은 경우 이를 뷰포트에 맞춥니다", eHelpBoxMessageType.Info)]
         [SerializeField] private bool m_FitContentToViewport = false;
 
         #endregion

@@ -6,7 +6,7 @@ using UnityEngine;
 [CanEditMultipleObjects]
 public class RecycleScrollerEditor : Editor
 {
-    public enum FieldShowState
+    public enum eFieldShowState
     {
         Show,
         Disable,
@@ -95,12 +95,12 @@ public class RecycleScrollerEditor : Editor
         // Fixed Cell Count (ConditionalDisableOrHide)
         var fixedCountState = scroller.FixCellCountInGroup
             ? IsAppPlaying
-                ? FieldShowState.Disable
-                : FieldShowState.Show
-            : FieldShowState.Hide;
-        if (fixedCountState is not FieldShowState.Hide)
+                ? eFieldShowState.Disable
+                : eFieldShowState.Show
+            : eFieldShowState.Hide;
+        if (fixedCountState is not eFieldShowState.Hide)
         {
-            EditorGUI.BeginDisabledGroup(fixedCountState is FieldShowState.Disable);
+            EditorGUI.BeginDisabledGroup(fixedCountState is eFieldShowState.Disable);
             EditorGUILayout.PropertyField(m_fixedCellCount);
             EditorGUI.EndDisabledGroup();
         }
@@ -108,12 +108,12 @@ public class RecycleScrollerEditor : Editor
         // Use MinMax Flexible Cell Count (ConditionalDisableOrHide)
         var flexibleCountState = !scroller.FixCellCountInGroup
             ? IsAppPlaying
-                ? FieldShowState.Disable
-                : FieldShowState.Show
-            : FieldShowState.Hide;
-        if (flexibleCountState is not FieldShowState.Hide)
+                ? eFieldShowState.Disable
+                : eFieldShowState.Show
+            : eFieldShowState.Hide;
+        if (flexibleCountState is not eFieldShowState.Hide)
         {
-            EditorGUI.BeginDisabledGroup(flexibleCountState is FieldShowState.Disable);
+            EditorGUI.BeginDisabledGroup(flexibleCountState is eFieldShowState.Disable);
             EditorGUILayout.PropertyField(m_useMinMaxFlexibleCellCount);
             EditorGUI.EndDisabledGroup();
         }
@@ -121,12 +121,12 @@ public class RecycleScrollerEditor : Editor
         // Flexible Cell Count Limit (ConditionalDisableOrHide)
         var flexibleLimitState = scroller.ShowMinMaxFlexibleCellCount
             ? IsAppPlaying
-                ? FieldShowState.Disable
-                : FieldShowState.Show
-            : FieldShowState.Hide;
-        if (flexibleLimitState is not FieldShowState.Hide)
+                ? eFieldShowState.Disable
+                : eFieldShowState.Show
+            : eFieldShowState.Hide;
+        if (flexibleLimitState is not eFieldShowState.Hide)
         {
-            EditorGUI.BeginDisabledGroup(flexibleLimitState is FieldShowState.Disable);
+            EditorGUI.BeginDisabledGroup(flexibleLimitState is eFieldShowState.Disable);
             EditorGUILayout.PropertyField(m_flexibleCellCountLimit);
             EditorGUI.EndDisabledGroup();
         }
@@ -134,12 +134,12 @@ public class RecycleScrollerEditor : Editor
         // Spacing In Group (ConditionalDisableOrHide)
         var spacingState = scroller.ShowSpacingInGroup
             ? IsAppPlaying
-                ? FieldShowState.Disable
-                : FieldShowState.Show
-            : FieldShowState.Hide;
-        if (spacingState is not FieldShowState.Hide)
+                ? eFieldShowState.Disable
+                : eFieldShowState.Show
+            : eFieldShowState.Hide;
+        if (spacingState is not eFieldShowState.Hide)
         {
-            EditorGUI.BeginDisabledGroup(spacingState is FieldShowState.Disable);
+            EditorGUI.BeginDisabledGroup(spacingState is eFieldShowState.Disable);
             EditorGUILayout.PropertyField(m_SpacingInGroup);
             EditorGUI.EndDisabledGroup();
         }

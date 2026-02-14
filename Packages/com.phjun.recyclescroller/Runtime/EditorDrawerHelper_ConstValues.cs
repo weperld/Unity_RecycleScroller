@@ -1,4 +1,4 @@
-public enum HelpBoxMessageType
+public enum eHelpBoxMessageType
 {
     None,
     Info,

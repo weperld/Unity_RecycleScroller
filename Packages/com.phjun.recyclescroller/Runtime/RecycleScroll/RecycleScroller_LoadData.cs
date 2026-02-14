@@ -43,14 +43,14 @@ namespace RecycleScroll
             return callbacks;
         }
 
-        private void SetLoadProceedState(LoadDataProceedState state)
+        private void SetLoadProceedState(eLoadDataProceedState state)
         {
             m_loadDataProceedState = state;
         }
         private void SetLoadProceedStateToNotLoaded_IfIsLoading()
         {
-            if (m_loadDataProceedState is not LoadDataProceedState.Loading) return;
-            SetLoadProceedState(LoadDataProceedState.NotLoaded);
+            if (m_loadDataProceedState is not eLoadDataProceedState.Loading) return;
+            SetLoadProceedState(eLoadDataProceedState.NotLoaded);
         }
         #endregion
 
@@ -60,7 +60,7 @@ namespace RecycleScroll
         /// </summary>
         public LoadDataCallbacks LoadData(params LoadParam[] _params)
         {
-            SetLoadProceedState(LoadDataProceedState.Loading);
+            SetLoadProceedState(eLoadDataProceedState.Loading);
 
             ResetValuesOnStartLoadData();
             var callbacks = CreateNewLoadDataCallbacks();
@@ -75,7 +75,7 @@ namespace RecycleScroll
         /// </summary>
         public LoadDataCallbacks LoadDataAsync(params LoadParam[] _params)
         {
-            SetLoadProceedState(LoadDataProceedState.Loading);
+            SetLoadProceedState(eLoadDataProceedState.Loading);
 
             ResetValuesOnStartLoadData();
             var loadDataAsyncCallbacks = CreateNewLoadDataCallbacks();
@@ -127,7 +127,7 @@ namespace RecycleScroll
             if (CheckActiveInHierarchy()) return true;
 
             SetLoadProceedStateToNotLoaded_IfIsLoading();
-            callbacks.Invoke(LoadDataResultState.Fail_NotActive);
+            callbacks.Invoke(eLoadDataResultState.Fail_NotActive);
             return false;
         }
 
@@ -176,15 +176,15 @@ namespace RecycleScroll
             if (del == null)
             {
                 SetLoadProceedStateToNotLoaded_IfIsLoading();
-                callbacks.Invoke(LoadDataResultState.Fail_EmptyDel);
+                callbacks.Invoke(eLoadDataResultState.Fail_EmptyDel);
                 yield break;
             }
 
             CalculateScrollValuesOnLoadData(_params);
             UpdateObjectsOnLoadData(_params);
 
-            SetLoadProceedState(LoadDataProceedState.Loaded);
-            callbacks.Invoke(LoadDataResultState.Complete);
+            SetLoadProceedState(eLoadDataProceedState.Loaded);
+            callbacks.Invoke(eLoadDataResultState.Complete);
         }
         #endregion
 
@@ -206,7 +206,7 @@ namespace RecycleScroll
             }
             catch (OperationCanceledException)
             {
-                loadDataCallbacks.Invoke(LoadDataResultState.Fail_Cancelled);
+                loadDataCallbacks.Invoke(eLoadDataResultState.Fail_Cancelled);
                 return;
             }
 
@@ -215,7 +215,7 @@ namespace RecycleScroll
             if (del == null)
             {
                 SetLoadProceedStateToNotLoaded_IfIsLoading();
-                loadDataCallbacks.Invoke(LoadDataResultState.Fail_EmptyDel);
+                loadDataCallbacks.Invoke(eLoadDataResultState.Fail_EmptyDel);
                 return;
             }
 
@@ -228,14 +228,14 @@ namespace RecycleScroll
             }
             catch (OperationCanceledException)
             {
-                loadDataCallbacks.Invoke(LoadDataResultState.Fail_Cancelled);
+                loadDataCallbacks.Invoke(eLoadDataResultState.Fail_Cancelled);
             }
             finally
             {
                 if (callID == m_loadDataAsyncCallID)
                 {
                     ResetLoadDataAsyncSources();
-                    SetLoadProceedState(LoadDataProceedState.Loaded);
+                    SetLoadProceedState(eLoadDataProceedState.Loaded);
                 }
             }
         }
@@ -253,7 +253,7 @@ namespace RecycleScroll
                 if (CheckContinuableLoadDataAsync(token, loadDataCallbacks, callID) == false) return;
 
                 UpdateObjectsOnLoadData(_params);
-                loadDataCallbacks.Invoke(LoadDataResultState.Complete);
+                loadDataCallbacks.Invoke(eLoadDataResultState.Complete);
             }
             finally
             {
@@ -286,7 +286,7 @@ namespace RecycleScroll
         {
             if (callID != m_loadDataAsyncCallID)
             {
-                loadDataCallbacks.Invoke(LoadDataResultState.Fail_NotLatest);
+                loadDataCallbacks.Invoke(eLoadDataResultState.Fail_NotLatest);
                 return false;
             }
 

@@ -661,7 +661,7 @@ namespace RecycleScroll
         /// <param name="duration">이동에 소요되는 시간</param>
         /// <param name="normalizedPos">위치 값이 노멀라이즈되었는지 여부</param>
         /// <param name="offset">위치 오프셋 값</param>
-        public void MoveTo(float pos, Ease ease, float duration = 0f, bool normalizedPos = true, float offset = 0f)
+        public void MoveTo(float pos, eEase ease, float duration = 0f, bool normalizedPos = true, float offset = 0f)
             => MoveTo_Base(pos, duration, normalizedPos, offset, (p, d) => StartMoveContentCor(p, d, ease));
 
         /// <summary>
@@ -673,7 +673,7 @@ namespace RecycleScroll
         /// <param name="normalizedPos">위치 값이 노멀라이즈되었는지 여부</param>
         /// <param name="offset">위치 오프셋 값</param>
         public void MoveTo(float pos, float duration = 0f, bool normalizedPos = true, float offset = 0f)
-            => MoveTo(pos, Ease.Linear, duration, normalizedPos, offset);
+            => MoveTo(pos, eEase.Linear, duration, normalizedPos, offset);
 
         /// <summary>
         /// 지정된 위치로 콘텐츠를 이동합니다.
@@ -706,7 +706,7 @@ namespace RecycleScroll
             moveAction(pos);
         }
 
-        public void MoveToIndex_ViaViewportSizeAligned(int index, Ease ease, float viewportNormalSize, float duration = 0f, float offset = 0f)
+        public void MoveToIndex_ViaViewportSizeAligned(int index, eEase ease, float viewportNormalSize, float duration = 0f, float offset = 0f)
             => MoveToIndex_ViaViewportSizeAligned_Base(index, viewportNormalSize, p => MoveTo(p, ease, duration, false, offset));
 
         public void MoveToIndex_ViaViewportSizeAligned(int index, AnimationCurve curve, float viewportNormalSize, float duration = 0f, float offset = 0f)
@@ -716,13 +716,13 @@ namespace RecycleScroll
             => MoveToIndex_ViaViewportSizeAligned_Base(index, viewportNormalSize, p => MoveTo_UsePagingEaseConfig(p, duration, false, offset));
 
         public void MoveToIndex_ViaViewportSizeAligned(int index, float viewportNormalSize, float duration = 0f, float offset = 0f)
-            => MoveToIndex_ViaViewportSizeAligned(index, Ease.Linear, viewportNormalSize, duration, offset);
+            => MoveToIndex_ViaViewportSizeAligned(index, eEase.Linear, viewportNormalSize, duration, offset);
 
         #endregion
 
         #region MoveToIndex
 
-        public void MoveToIndex(int index, Ease ease, float duration = 0f, float offset = 0f)
+        public void MoveToIndex(int index, eEase ease, float duration = 0f, float offset = 0f)
             => MoveToIndex_ViaViewportSizeAligned(index, ease, 0f, duration, offset);
 
         public void MoveToIndex(int index, AnimationCurve curve, float duration = 0f, float offset = 0f)
@@ -731,19 +731,19 @@ namespace RecycleScroll
         public void MoveToIndex_UsePageEase(int index, float duration = 0f, float offset = 0f)
             => MoveToIndex_ViaViewportSizeAligned_UsePageEase(index, 0f, duration, offset);
 
-        public void MoveToIndex(int index, float duration = 0f, float offset = 0f) => MoveToIndex(index, Ease.Linear, duration, offset);
+        public void MoveToIndex(int index, float duration = 0f, float offset = 0f) => MoveToIndex(index, eEase.Linear, duration, offset);
 
         #endregion
 
         #region MoveToIndex_Center
 
-        public void MoveToIndex_ViewportCenter(int index, Ease ease, float duration = 0f, float offset = 0f)
+        public void MoveToIndex_ViewportCenter(int index, eEase ease, float duration = 0f, float offset = 0f)
             => MoveToIndex_ViaViewportSizeAligned(index, ease, 0.5f, duration, offset);
 
         public void MoveToIndex_ViewportCenter(int index, AnimationCurve curve, float duration = 0f, float offset = 0f)
             => MoveToIndex_ViaViewportSizeAligned(index, curve, 0.5f, duration, offset);
 
-        public void MoveToIndex_ViewportCenter_UseCellSizeVec(int index, Func<CellSizeVector, float> offsetFunc, Ease ease, float duration = 0f)
+        public void MoveToIndex_ViewportCenter_UseCellSizeVec(int index, Func<CellSizeVector, float> offsetFunc, eEase ease, float duration = 0f)
         {
             var cellSize = m_list_cellSizeVec[index];
             var offset = offsetFunc(cellSize);
@@ -765,7 +765,7 @@ namespace RecycleScroll
                     var size = cellSize.Size;
                     return offsetFunc(size);
                 },
-                Ease.Linear,
+                eEase.Linear,
                 duration);
         }
 
@@ -1193,21 +1193,21 @@ namespace RecycleScroll
 
         #region Load Data Wait Buffer
 
-        private bool TryAddWaitBuffer(Action action, out LoadDataProceedState current)
+        private bool TryAddWaitBuffer(Action action, out eLoadDataProceedState current)
         {
             current = m_loadDataProceedState;
 
             if (action is null) return false;
-            if (m_loadDataProceedState is not LoadDataProceedState.Loading) return false;
+            if (m_loadDataProceedState is not eLoadDataProceedState.Loading) return false;
 
             m_loadDataWaitingActionBuffer.Enqueue(action);
             StartCorWaitLoadDataStateToCompleteForBuffer();
             return true;
         }
-        private bool TryAddWaitBuffer_AndCheckCurrentState(Action action, out LoadDataProceedState current)
+        private bool TryAddWaitBuffer_AndCheckCurrentState(Action action, out eLoadDataProceedState current)
         {
             var result = TryAddWaitBuffer(action, out current);
-            return result || current is LoadDataProceedState.NotLoaded;
+            return result || current is eLoadDataProceedState.NotLoaded;
         }
 
         private void ExecuteWaitBuffer()
@@ -1239,8 +1239,8 @@ namespace RecycleScroll
         {
             // 로딩 상태가 끝나길 기다림
             // 하지만, del 등록이 안 되어 있는 등의 상황으로 로딩이 취소되면 대기를 중단하고 버퍼를 비움
-            yield return new WaitUntil(() => m_loadDataProceedState is not LoadDataProceedState.Loading);
-            if (m_loadDataProceedState is LoadDataProceedState.NotLoaded)
+            yield return new WaitUntil(() => m_loadDataProceedState is not eLoadDataProceedState.Loading);
+            if (m_loadDataProceedState is eLoadDataProceedState.NotLoaded)
             {
                 m_loadDataWaitingActionBuffer.Clear();
                 yield break;
