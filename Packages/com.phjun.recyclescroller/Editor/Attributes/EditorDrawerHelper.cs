@@ -245,4 +245,112 @@ public static partial class EditorDrawerHelper
 
         EditorGUI.DrawRect(lineRect, lineColor);
     }
+
+    #region Foldout Category Styles & Helpers
+
+    // Big category box colors (alternating neutral grey tints)
+    public static readonly Color BigBoxColorA = new(0.06f, 0.06f, 0.06f, 0.5f);
+    public static readonly Color BigBoxColorB = new(0.14f, 0.14f, 0.14f, 0.5f);
+
+    // Small category title colors (alternating green pastel)
+    public const string SMALL_TITLE_COLOR_A = "#A8E6CF";
+    public const string SMALL_TITLE_COLOR_B = "#C8E6A0";
+
+    // Small category box colors (alternating green-grey)
+    public static readonly Color SmallBoxColorA = new(0.20f, 0.28f, 0.22f, 0.45f);
+    public static readonly Color SmallBoxColorB = new(0.26f, 0.30f, 0.20f, 0.45f);
+
+    private static GUIStyle m_inspectorTitleStyle;
+    public static GUIStyle InspectorTitleStyle
+    {
+        get
+        {
+            if (m_inspectorTitleStyle == null)
+            {
+                m_inspectorTitleStyle = new GUIStyle(EditorStyles.boldLabel)
+                {
+                    fontSize = 15
+                };
+            }
+            return m_inspectorTitleStyle;
+        }
+    }
+
+    private static GUIStyle m_bigFoldoutStyle;
+    public static GUIStyle BigFoldoutStyle
+    {
+        get
+        {
+            if (m_bigFoldoutStyle == null)
+            {
+                m_bigFoldoutStyle = new GUIStyle(EditorStyles.foldoutHeader)
+                {
+                    richText = true,
+                    fontStyle = FontStyle.Bold,
+                    fontSize = 12
+                };
+            }
+            return m_bigFoldoutStyle;
+        }
+    }
+
+    private static GUIStyle m_smallFoldoutStyle;
+    public static GUIStyle SmallFoldoutStyle
+    {
+        get
+        {
+            if (m_smallFoldoutStyle == null)
+            {
+                m_smallFoldoutStyle = new GUIStyle(EditorStyles.foldout)
+                {
+                    richText = true
+                };
+            }
+            return m_smallFoldoutStyle;
+        }
+    }
+
+    public static void DrawBigCategory(ref bool foldout, string title, string hexColor,
+        Color boxColor, string subtitle, Action drawContent)
+    {
+        var rect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        if (Event.current.type == EventType.Repaint)
+            EditorGUI.DrawRect(rect, boxColor);
+
+        foldout = EditorGUILayout.Foldout(foldout,
+            $"<color={hexColor}>{title}</color>", true, BigFoldoutStyle);
+        if (foldout)
+        {
+            EditorGUILayout.LabelField($"↳ {subtitle}", EditorStyles.miniLabel);
+            EditorGUI.indentLevel++;
+            drawContent();
+            EditorGUI.indentLevel--;
+        }
+
+        EditorGUILayout.EndVertical();
+    }
+
+    public static void DrawSmallCategory(ref bool foldout, string title, string hexColor,
+        Color boxColor, Action drawContent)
+    {
+        var subRect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        if (Event.current.type == EventType.Repaint)
+            EditorGUI.DrawRect(subRect, boxColor);
+
+        var controlRect = EditorGUILayout.GetControlRect();
+        EditorGUI.DrawRect(controlRect, boxColor);
+        foldout = EditorGUI.Foldout(controlRect, foldout,
+            $"<color={hexColor}>{title}</color>", true, SmallFoldoutStyle);
+
+        if (foldout)
+        {
+            EditorGUI.indentLevel++;
+            drawContent();
+            EditorGUI.indentLevel--;
+        }
+
+        EditorGUILayout.EndVertical();
+    }
+
+    #endregion
 }

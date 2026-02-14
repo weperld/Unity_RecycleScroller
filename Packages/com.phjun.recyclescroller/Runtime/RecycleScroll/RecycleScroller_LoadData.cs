@@ -451,11 +451,8 @@ namespace RecycleScroll
 
         private void CheckLoop(float viewportSize)
         {
-            m_addingFrontContentSizeInLoop = 0f;
-            m_addingBackContentSizeInLoop = 0f;
-            m_frontAdditionalPageCount = 0;
-            m_backAdditionalPageCount = 0;
             m_loopScrollable = false;
+            m_scrollerMode = NormalScrollerMode.Instance;
 
             if (m_loopScroll == false) return;
 
@@ -511,8 +508,6 @@ namespace RecycleScroll
                 + backAddGroupList.LastOrDefault().size + Spacing;
             backAddingGroupsSize = Mathf.Max(backAddingGroupsSize, 0f);
 
-            m_addingFrontContentSizeInLoop = frontAddingGroupsSize;
-            m_addingBackContentSizeInLoop = backAddingGroupsSize;
             m_realContentSize += frontAddingGroupsSize + backAddingGroupsSize;
 
             #region 그룹 위치 리스트 재계산
@@ -523,24 +518,29 @@ namespace RecycleScroll
             #endregion
 
             #region 페이지 위치 리스트 재계산
+            var frontAdditionalPageCount = 0;
+            var backAdditionalPageCount = 0;
             if (m_pagingData.usePaging)
             {
+                // ShowingContentSize를 로컬로 계산 (m_scrollerMode가 아직 설정되지 않았으므로)
+                var showingContentSize = m_realContentSize - frontAddingGroupsSize - backAddingGroupsSize;
+
                 // 앞에 추가된 그룹 데이터들이 속한 페이지 체크
                 var frontPageCount = frontAddCount / m_pagingData.countPerPage;
                 if (frontAddCount % m_pagingData.countPerPage > 0) frontPageCount++;
                 frontPageCount++;
                 var frontAddPageStartIndex = m_dp_pagePos.Count - frontPageCount;
                 var frontPagePosList = m_dp_pagePos.GetSafeRange(frontAddPageStartIndex, frontPageCount)
-                    .Select(pos => pos - ShowingContentSize + frontAddingGroupsSize);
-                m_frontAdditionalPageCount = frontPageCount;
+                    .Select(pos => pos - showingContentSize + frontAddingGroupsSize);
+                frontAdditionalPageCount = frontPageCount;
 
                 // 뒤에 추가된 그룹 데이터들이 속한 페이지 체크
                 var backPageCount = backAddCount / m_pagingData.countPerPage;
                 if (backAddCount % m_pagingData.countPerPage > 0) backPageCount++;
                 backPageCount++;
                 var backPagePosList = m_dp_pagePos.GetSafeRange(0, backPageCount)
-                    .Select(pos => pos + RealContentSize - m_addingBackContentSizeInLoop);
-                m_backAdditionalPageCount = backPageCount;
+                    .Select(pos => pos + m_realContentSize - backAddingGroupsSize);
+                backAdditionalPageCount = backPageCount;
 
                 // 각 페이지 위치 리스트 재계산
                 for (int i = 0; i < m_dp_pagePos.Count; i++)
@@ -555,6 +555,11 @@ namespace RecycleScroll
             m_list_groupData.InsertRange(0, frontAddGroupList);
             m_list_groupData.AddRange(backAddGroupList);
             #endregion
+
+            // 계산된 값으로 루프 모드 전략 객체 생성
+            m_scrollerMode = new LoopScrollerMode(
+                frontAddingGroupsSize, backAddingGroupsSize,
+                frontAdditionalPageCount, backAdditionalPageCount);
         }
         #endregion
         #endregion
