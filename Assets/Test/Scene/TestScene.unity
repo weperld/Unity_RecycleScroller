@@ -167,7 +167,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 225584204}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
+  m_Script: {fileID: 11500000, guid: 59f8146938fff824cb5fd77236b75775, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Padding:
@@ -287,7 +287,7 @@ MonoBehaviour:
       m_Calls: []
   m_leftHandle: {fileID: 0}
   m_rightHandle: {fileID: 0}
-  m_graphics: []
+  m_extraTransitions: []
   m_loopScrollSettingFoldout: 1
   m_eventFoldout: 1
 --- !u!114 &432218253
@@ -866,7 +866,8 @@ MonoBehaviour:
   m_childForceExpand:
     width: 0
     height: 0
-  m_scrollAxis: 0
+  m_scrollAxis: 1
+  m_scrollbarRef: {fileID: 432218252}
   m_fitContentToViewport: 0
   m_fixedCellCountInGroup: 1
   m_fixedCellCount: 1
@@ -878,7 +879,7 @@ MonoBehaviour:
   m_pagingData:
     usePaging: 0
     addEmptySpaceToLastPage: 0
-    countPerPage: 0
+    countPerPage: 1
     duration: 0
     scrollViewPivotType: 0
     scrollViewCustomPivot: 0
@@ -893,7 +894,6 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   m_loopScroll: 1
-  m_scrollbarRef: {fileID: 432218252}
   m_maxPoolSizePerType: 100
   m_exampleLayoutGroups:
   - {fileID: 225584204}
@@ -910,8 +910,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Content: {fileID: 1918510550}
-  m_Horizontal: 0
-  m_Vertical: 1
+  m_Horizontal: 1
+  m_Vertical: 0
   m_MovementType: 1
   m_Elasticity: 0.1
   m_Inertia: 1
@@ -1297,7 +1297,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 1918510549}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 59f8146938fff824cb5fd77236b75775, type: 3}
+  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Padding:
@@ -1307,10 +1307,10 @@ MonoBehaviour:
     m_Bottom: 0
   m_ChildAlignment: 0
   m_Spacing: 0
-  m_ChildForceExpandWidth: 1
-  m_ChildForceExpandHeight: 0
-  m_ChildControlWidth: 1
-  m_ChildControlHeight: 0
+  m_ChildForceExpandWidth: 0
+  m_ChildForceExpandHeight: 1
+  m_ChildControlWidth: 0
+  m_ChildControlHeight: 1
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
