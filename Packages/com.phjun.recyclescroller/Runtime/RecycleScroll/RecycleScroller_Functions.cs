@@ -21,23 +21,8 @@ namespace RecycleScroll
 
             ExecuteInitializer(_params);
 
-            TopPadding = m_loopScrollable
-                ? m_spacing / 2f
-                : ScrollAxis switch
-                {
-                    eScrollAxis.VERTICAL => m_padding.top,
-                    eScrollAxis.HORIZONTAL => m_padding.left,
-                    _ => 0f,
-                };
-
-            BottomPadding = m_loopScrollable
-                ? m_spacing / 2f
-                : ScrollAxis switch
-                {
-                    eScrollAxis.VERTICAL => m_padding.bottom,
-                    eScrollAxis.HORIZONTAL => m_padding.right,
-                    _ => 0f,
-                };
+            TopPadding = m_scrollerMode.GetTopPadding(m_spacing, m_padding, ScrollAxis);
+            BottomPadding = m_scrollerMode.GetBottomPadding(m_spacing, m_padding, ScrollAxis);
 
             LayoutRebuilder.ForceRebuildLayoutImmediate(_RectTransform);
 
@@ -136,28 +121,12 @@ namespace RecycleScroll
 
         public float ConvertRealToShow(float realValue)
         {
-            // RealScrollPosition 값을 기반으로 계산
-            var pos = realValue;
-            if (m_loopScrollable == false) return pos;
-
-            pos -= m_addingFrontContentSizeInLoop;
-            pos = AdjustShowingPosValue(pos);
-            return pos;
+            return m_scrollerMode.ConvertRealToShow(realValue, ShowingContentSize);
         }
 
         public float ConvertShowToReal(float showValue)
         {
-            // ShowScrollPosition 값을 기반으로 계산
-            var setValue = AdjustShowingPosValue(showValue);
-            setValue += m_addingFrontContentSizeInLoop;
-            return setValue;
-        }
-
-        private float AdjustShowingPosValue(float value)
-        {
-            var setValue = value % ShowingContentSize;
-            if (setValue < 0f) setValue += ShowingContentSize;
-            return setValue;
+            return m_scrollerMode.ConvertShowToReal(showValue, ShowingContentSize);
         }
 
         private void SetDirty()
@@ -410,15 +379,11 @@ namespace RecycleScroll
         /// <param name="val"></param>
         public void OnScrollRectScrolling(Vector2 val)
         {
-            if (m_loopScrollable)
+            if (m_scrollerMode.NeedReposition(RealScrollPosition, FrontThreshold, BackThreshold, RealScrollSize))
             {
-                var currentRealPos = RealScrollPosition;
-                if (currentRealPos < FrontThreshold || currentRealPos > RealScrollSize - BackThreshold)
-                {
-                    var velocity = _ScrollRect.velocity;
-                    ShowingScrollPosition = ShowingScrollPosition;
-                    _ScrollRect.velocity = velocity;
-                }
+                var velocity = _ScrollRect.velocity;
+                ShowingScrollPosition = ShowingScrollPosition;
+                _ScrollRect.velocity = velocity;
             }
 
             SetScrollbarValueWithoutNotify();
@@ -948,13 +913,7 @@ namespace RecycleScroll
 
         private int ConvertToShowPageIndex(int realPageIndex)
         {
-            if (m_loopScrollable == false) return realPageIndex;
-
-            var adjustIndex = realPageIndex - m_frontAdditionalPageCount;
-            adjustIndex %= RealPageCount;
-            if (adjustIndex < 0) adjustIndex += RealPageCount;
-
-            return adjustIndex;
+            return m_scrollerMode.ConvertToShowPageIndex(realPageIndex, RealPageCount);
         }
 
         /// <summary>
@@ -1128,18 +1087,8 @@ namespace RecycleScroll
         {
             if (Scrollbar == null) return;
 
-            float normalizedPos;
-            if (m_loopScrollable)
-            {
-                // ShowingScrollSize가 0이면 (content <= viewport) NaN 방지
-                normalizedPos = ShowingScrollSize > 0f
-                    ? ShowingNormalizedScrollPosition
-                    : 0f;
-            }
-            else
-            {
-                normalizedPos = RealNormalizedScrollPosition;
-            }
+            float normalizedPos = m_scrollerMode.GetScrollbarNormalizedPosition(
+                ShowingNormalizedScrollPosition, RealNormalizedScrollPosition, ShowingScrollSize);
 
             Scrollbar.SetValueWithoutNotify(ScrollAxis is eScrollAxis.VERTICAL
                 ? 1f - normalizedPos
@@ -1157,10 +1106,9 @@ namespace RecycleScroll
                 ? 1f - scrollbarValue
                 : scrollbarValue;
 
-            if (m_loopScrollable)
-                ShowingNormalizedScrollPosition = normalizedValue;
-            else
-                RealNormalizedScrollPosition = normalizedValue;
+            m_scrollerMode.ApplyScrollbarValue(normalizedValue,
+                v => ShowingNormalizedScrollPosition = v,
+                v => RealNormalizedScrollPosition = v);
         }
 
         /// <summary>

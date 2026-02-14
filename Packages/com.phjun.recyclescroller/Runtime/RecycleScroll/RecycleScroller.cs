@@ -96,7 +96,7 @@ namespace RecycleScroll
                 return m_dp_pagePos.Count;
             }
         }
-        public int ShowingPageCount => RealPageCount - m_frontAdditionalPageCount - m_backAdditionalPageCount;
+        public int ShowingPageCount => RealPageCount - m_scrollerMode.FrontAdditionalPageCount - m_scrollerMode.BackAdditionalPageCount;
 
         private float PagePivotPosInViewport => m_pagingData.ScrollViewPivot * ViewportSize;
         private float PagePivotPosInScrollRect => PagePivotPosInViewport + RealScrollPosition;
@@ -108,9 +108,6 @@ namespace RecycleScroll
 
         private int m_prevPageIndexByScrollPos = 0;
 
-        private int m_frontAdditionalPageCount = 0;
-        private int m_backAdditionalPageCount = 0;
-
         #endregion
 
         #region Loop Scroll
@@ -118,14 +115,10 @@ namespace RecycleScroll
         private readonly float m_normalizedLoopThreshold = 0.5f;
         private bool m_loopScrollable = false;
 
-        private float m_addingFrontContentSizeInLoop = 0f;
-        private float m_addingBackContentSizeInLoop = 0f;
+        private IScrollerMode m_scrollerMode = NormalScrollerMode.Instance;
 
-        private float NormalizedAddingFrontContentSizeInLoop => m_addingFrontContentSizeInLoop / RealContentSize;
-        private float NormalizedAddingBackContentSizeInLoop => m_addingBackContentSizeInLoop / RealContentSize;
-
-        private float FrontThreshold => m_normalizedLoopThreshold * m_addingFrontContentSizeInLoop;
-        private float BackThreshold => m_normalizedLoopThreshold * m_addingBackContentSizeInLoop;
+        private float FrontThreshold => m_normalizedLoopThreshold * m_scrollerMode.AddingFrontContentSize;
+        private float BackThreshold => m_normalizedLoopThreshold * m_scrollerMode.AddingBackContentSize;
 
         public bool LoopScrollIsOn => m_loopScroll;
         public bool IsLoopScrollable => m_loopScrollable;
@@ -153,7 +146,7 @@ namespace RecycleScroll
         public float RealScrollSize => Mathf.Max(RealContentSize - ViewportSize, 0f);
         public float ShowingScrollSize => Mathf.Max(ShowingContentSize - ViewportSize, 0f);
 
-        private float AddingContentSize => m_loopScrollable ? m_addingFrontContentSizeInLoop + m_addingBackContentSizeInLoop : 0f;
+        private float AddingContentSize => m_scrollerMode.AddingFrontContentSize + m_scrollerMode.AddingBackContentSize;
 
         public float RealSize => RealContentSize;
         public float ShowingSize => ShowingContentSize;

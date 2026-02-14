@@ -114,7 +114,6 @@ namespace RecycleScroll
         #region Internal Fields
 
         private RectTransform m_containerRect;
-        private Vector2 m_offset = Vector2.zero;
 
 #pragma warning disable 649
         private DrivenRectTransformTracker m_tracker;
@@ -124,12 +123,9 @@ namespace RecycleScroll
         private bool m_isPointerDownAndNotDragging = false;
         private bool m_delayedUpdateVisuals = false;
 
-        /// <summary>
-        /// 루프 모드 delta 기반 드래그를 위한 이전 프레임 로컬 커서 위치
-        /// </summary>
-        private Vector2? m_prevDragLocalCursor = null;
-
         private IRecycleScrollbarDelegate m_del;
+        private IScrollbarMode m_scrollbarMode;
+        private IScrollbarMode ScrollbarMode => m_scrollbarMode ??= new NormalScrollbarMode();
 
         #endregion
 
@@ -387,26 +383,8 @@ namespace RecycleScroll
         {
             if (!Application.isPlaying) return;
 
-            if (m_del == null || !m_del.IsLoopScrollable)
-            {
-                OnLoopValueChanged.Invoke(val, val);
-                return;
-            }
-
-            // 루프 모드: val은 showing-normalized position
-            // OnLoopValueChanged(realNormalized, showingNormalized)
-            float showingScrollSize = m_del.ShowingSize - m_del.ViewportSize;
-            if (showingScrollSize <= 0f)
-            {
-                OnLoopValueChanged.Invoke(val, val);
-                return;
-            }
-
-            float showingPos = val * showingScrollSize;
-            float realPos = m_del.ConvertShowToReal(showingPos);
-            float realScrollSize = m_del.RealSize - m_del.ViewportSize;
-            float realNormalized = realScrollSize > 0f ? realPos / realScrollSize : 0f;
-            OnLoopValueChanged.Invoke(realNormalized, val);
+            var (real, showing) = ScrollbarMode.ConvertValueForEvent(val, m_del);
+            OnLoopValueChanged.Invoke(real, showing);
         }
 
         public virtual void SetValueWithoutNotify(float input)
@@ -448,86 +426,22 @@ namespace RecycleScroll
                     | DrivenTransformProperties.AnchoredPosition
                     | DrivenTransformProperties.SizeDelta);
 
-                // 루프 모드: 서브 핸들 트래커 등록
-                if (IsLoopMode)
-                {
-                    if (m_leftHandle)
-                        m_tracker.Add(this, m_leftHandle,
-                            DrivenTransformProperties.Anchors
-                            | DrivenTransformProperties.AnchoredPosition
-                            | DrivenTransformProperties.SizeDelta);
-                    if (m_rightHandle)
-                        m_tracker.Add(this, m_rightHandle,
-                            DrivenTransformProperties.Anchors
-                            | DrivenTransformProperties.AnchoredPosition
-                            | DrivenTransformProperties.SizeDelta);
-                }
-
-                Vector2 anchorMin = Vector2.zero;
-                Vector2 anchorMax = Vector2.one;
+                // 모드별 추가 트래커 등록 (루프 모드: 서브 핸들)
+                ScrollbarMode.RegisterAdditionalTrackers(
+                    ref m_tracker, this, m_leftHandle, m_rightHandle, (int)_Axis);
 
                 float displaySize = DisplaySize;
 
-                // === 비루프 모드: Elastic 핸들 사이즈 축소 ===
-                // value 오버슈트를 감지하여 핸들의 시각적 사이즈를 동적으로 축소.
-                // Unity ScrollRect 공식 변환: elasticSize = Clamp01(displaySize - overValue * (1 - size))
-                // DisplaySize 프로퍼티 자체는 변경하지 않아 드래그 로직(remainingSize)에 무영향.
-                float elasticDisplaySize = displaySize;
-                if (!IsLoopMode)
-                {
-                    float overValue = m_value < 0f ? -m_value : (m_value > 1f ? m_value - 1f : 0f);
-                    if (overValue > 0f)
-                        elasticDisplaySize = Mathf.Clamp01(displaySize - overValue * (1f - Size));
-                }
+                // 모드별 핸들 앵커 계산 (비루프: Elastic 축소, 루프: naturalSize + wrap)
+                var result = ScrollbarMode.CalculateHandleAnchors(
+                    displaySize, Value, Size, m_del, (int)_Axis, ReverseValue);
 
-                // 시각적 사이즈 결정: 비루프는 Elastic 축소 적용, 루프는 기존 displaySize 유지
-                float visualSize = IsLoopMode ? displaySize : elasticDisplaySize;
+                // 서브 핸들 wrap 업데이트 (루프 모드에서 메인 핸들이 경계를 넘을 때)
+                if (result.HasWrap)
+                    UpdateLoopHandles(result.StartWrap, result.EndWrap);
 
-                // 루프 모드: 핸들 이동 범위 계산에 자연 비율(viewport/content)을 사용.
-                // displaySize(고정 최소 크기 적용)로 계산하면 서브 핸들과
-                // 이동 범위가 불일치하여 wrap 경계에서 핸들이 점프함.
-                // naturalSize를 사용하면 value 범위 [0, content/scrollSize]가
-                // movement 범위 [0, 1.0]에 정확히 매핑되어 심리스 루프 달성.
-                float movementScale;
-                if (IsLoopMode && m_del != null)
-                {
-                    float naturalSize = m_del.ShowingSize > 0f ? m_del.ViewportSize / m_del.ShowingSize : displaySize;
-                    movementScale = 1f - naturalSize;
-                }
-                else
-                {
-                    movementScale = 1f - visualSize;
-                }
-                float movement = (IsLoopMode ? Value : Mathf.Clamp01(Value)) * movementScale;
-                if (ReverseValue)
-                {
-                    anchorMin[(int)_Axis] = 1 - movement - visualSize;
-                    anchorMax[(int)_Axis] = 1 - movement;
-                }
-                else
-                {
-                    anchorMin[(int)_Axis] = movement;
-                    anchorMax[(int)_Axis] = movement + visualSize;
-                }
-
-                // === 루프 모드: 메인 핸들 클램프 + 서브 핸들 사이즈 전환 ===
-                // 메인 핸들 anchor가 [0,1] 범위를 넘는 양을 서브 핸들 사이즈로 설정하고,
-                // 메인 핸들 자체는 [0,1]로 클램프하여 경계에서 시각적으로 축소.
-                // reverseValue가 이미 anchor 계산에 반영되어 Direction 독립적.
-                if (IsLoopMode)
-                {
-                    float startWrap = Mathf.Max(0f, anchorMax[(int)_Axis] - 1f);
-                    float endWrap = Mathf.Max(0f, -anchorMin[(int)_Axis]);
-
-                    // 메인 핸들을 [0,1] 범위로 클램프 → wrap 부분만큼 실제 사이즈 축소
-                    anchorMin[(int)_Axis] = Mathf.Max(0f, anchorMin[(int)_Axis]);
-                    anchorMax[(int)_Axis] = Mathf.Min(1f, anchorMax[(int)_Axis]);
-
-                    UpdateLoopHandles(startWrap, endWrap);
-                }
-
-                m_handleRect.anchorMin = anchorMin;
-                m_handleRect.anchorMax = anchorMax;
+                m_handleRect.anchorMin = result.AnchorMin;
+                m_handleRect.anchorMax = result.AnchorMax;
                 m_handleRect.anchoredPosition = Vector2.zero;
                 m_handleRect.sizeDelta = Vector2.zero;
             }
@@ -552,27 +466,7 @@ namespace RecycleScroll
             if (m_containerRect == null)
                 return;
 
-            if (IsLoopMode)
-            {
-                // 루프 모드: delta 추적용 초기 커서 위치 기록
-                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                    m_containerRect, eventData.position, eventData.pressEventCamera, out var localCursor))
-                    m_prevDragLocalCursor = localCursor;
-                else
-                    m_prevDragLocalCursor = null;
-            }
-            else
-            {
-                // 비루프 모드: 기존 Scrollbar의 절대 위치 오프셋 계산
-                m_offset = Vector2.zero;
-                if (RectTransformUtility.RectangleContainsScreenPoint(
-                    m_handleRect, eventData.pointerPressRaycast.screenPosition, eventData.enterEventCamera))
-                {
-                    if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                        m_handleRect, eventData.pointerPressRaycast.screenPosition, eventData.pressEventCamera, out var localMousePos))
-                        m_offset = localMousePos - m_handleRect.rect.center;
-                }
-            }
+            ScrollbarMode.InitDrag(eventData, m_containerRect, m_handleRect);
 
             if (Application.isPlaying)
                 OnBeginDragged.Invoke(eventData);
@@ -585,104 +479,17 @@ namespace RecycleScroll
 
             if (m_containerRect != null)
             {
-                if (IsLoopMode)
-                    UpdateDragForLoop(eventData);
-                else
-                    UpdateDrag(eventData);
+                ScrollbarMode.ProcessDrag(eventData, m_containerRect, m_handleRect,
+                    DisplaySize, m_value, (int)_Axis, ReverseValue, Set);
             }
-            // UpdateLoopHandles는 Set() → UpdateVisuals()에서 자동 호출
         }
 
         public void OnEndDrag(PointerEventData eventData)
         {
-            m_prevDragLocalCursor = null;
+            ScrollbarMode.EndDrag();
 
             if (Application.isPlaying)
                 OnEndDragged.Invoke(eventData);
-        }
-
-        /// <summary>
-        /// 비루프 모드 - 기존 Scrollbar의 절대 좌표 기반 드래그 로직
-        /// </summary>
-        private void UpdateDrag(PointerEventData eventData)
-        {
-            if (eventData.button != PointerEventData.InputButton.Left)
-                return;
-
-            if (m_containerRect == null)
-                return;
-
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                m_containerRect, eventData.position, eventData.pressEventCamera, out var localCursor))
-                return;
-
-            Vector2 handleCenterRelativeToContainerCorner = localCursor - m_offset - m_containerRect.rect.position;
-            Vector2 handleCorner = handleCenterRelativeToContainerCorner - (m_handleRect.rect.size - m_handleRect.sizeDelta) * 0.5f;
-
-            float parentSize = _Axis == Axis.Horizontal ? m_containerRect.rect.width : m_containerRect.rect.height;
-            float remainingSize = parentSize * (1 - DisplaySize);
-            if (remainingSize <= 0)
-                return;
-
-            switch (m_direction)
-            {
-                case Direction.LeftToRight:
-                    Set(Mathf.Clamp01(handleCorner.x / remainingSize));
-                    break;
-                case Direction.RightToLeft:
-                    Set(Mathf.Clamp01(1f - (handleCorner.x / remainingSize)));
-                    break;
-                case Direction.BottomToTop:
-                    Set(Mathf.Clamp01(handleCorner.y / remainingSize));
-                    break;
-                case Direction.TopToBottom:
-                    Set(Mathf.Clamp01(1f - (handleCorner.y / remainingSize)));
-                    break;
-            }
-        }
-
-        /// <summary>
-        /// 루프 모드 - delta 기반 드래그 로직.
-        /// 절대 좌표 대신 마우스 이동량(delta)으로 value를 계산하여,
-        /// 루프 재배치(ShowingScrollPosition = ShowingScrollPosition)와의 피드백 루프를 방지합니다.
-        ///
-        /// 기존 Scrollbar.UpdateDrag는 절대 좌표 → 절대 value 매핑 방식이라,
-        /// 루프 재배치로 value가 점프해도 다음 프레임에 마우스 위치 기반으로 원래 value를 복원해버려
-        /// 스크롤이 멈추는 문제가 있었습니다.
-        /// </summary>
-        private void UpdateDragForLoop(PointerEventData eventData)
-        {
-            if (eventData.button != PointerEventData.InputButton.Left)
-                return;
-
-            if (m_containerRect == null)
-                return;
-
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                m_containerRect, eventData.position, eventData.pressEventCamera, out var localCursor))
-                return;
-
-            if (!m_prevDragLocalCursor.HasValue)
-            {
-                m_prevDragLocalCursor = localCursor;
-                return;
-            }
-
-            Vector2 delta = localCursor - m_prevDragLocalCursor.Value;
-            m_prevDragLocalCursor = localCursor;
-
-            float axisDelta = _Axis == Axis.Horizontal ? delta.x : delta.y;
-            if (ReverseValue) axisDelta = -axisDelta;
-
-            float parentSize = _Axis == Axis.Horizontal ? m_containerRect.rect.width : m_containerRect.rect.height;
-            float remainingSize = parentSize * (1 - DisplaySize);
-            if (remainingSize <= 0)
-                return;
-
-            float valueDelta = axisDelta / remainingSize;
-            float newValue = m_value + valueDelta;
-
-            Set(newValue);
         }
 
         #endregion
@@ -718,11 +525,7 @@ namespace RecycleScroll
                         float change = axisCoordinate < 0 ? Size : -Size;
                         float newValue = Value + (ReverseValue ? change : -change);
 
-                        if (!IsLoopMode)
-                        {
-                            newValue = Mathf.Clamp01(newValue);
-                            newValue = Mathf.Round(newValue * 10000f) / 10000f;
-                        }
+                        newValue = ScrollbarMode.ClampClickValue(newValue);
 
                         Value = newValue;
                     }
@@ -840,6 +643,9 @@ namespace RecycleScroll
 
         public void Refresh()
         {
+            m_scrollbarMode = IsLoopMode
+                ? new LoopScrollbarMode()
+                : new NormalScrollbarMode();
             ResetSubHandlesPosition();
             UpdateVisuals();
         }
