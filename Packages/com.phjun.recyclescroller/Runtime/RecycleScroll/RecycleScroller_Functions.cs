@@ -22,24 +22,24 @@ namespace RecycleScroll
             ExecuteInitializer(_params);
 
             TopPadding = m_loopScrollable
-                ? m_Spacing / 2f
+                ? m_spacing / 2f
                 : ScrollAxis switch
                 {
-                    eScrollAxis.VERTICAL => m_Padding.top,
-                    eScrollAxis.HORIZONTAL => m_Padding.left,
+                    eScrollAxis.VERTICAL => m_padding.top,
+                    eScrollAxis.HORIZONTAL => m_padding.left,
                     _ => 0f,
                 };
 
             BottomPadding = m_loopScrollable
-                ? m_Spacing / 2f
+                ? m_spacing / 2f
                 : ScrollAxis switch
                 {
-                    eScrollAxis.VERTICAL => m_Padding.bottom,
-                    eScrollAxis.HORIZONTAL => m_Padding.right,
+                    eScrollAxis.VERTICAL => m_padding.bottom,
+                    eScrollAxis.HORIZONTAL => m_padding.right,
                     _ => 0f,
                 };
 
-            LayoutRebuilder.ForceRebuildLayoutImmediate(rectTransform);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_RectTransform);
 
             var inst = new GameObject(TRASH_OBJECT_NAME);
             inst.transform.SetParent(transform);
@@ -60,12 +60,12 @@ namespace RecycleScroll
             inst = new GameObject("SpaceCell_Top");
             inst.transform.SetParent(Content);
             inst.transform.localScale = Vector3.one;
-            rt_SpcCell_Top = inst.AddComponent<RectTransform>();
+            m_rt_spcCell_top = inst.AddComponent<RectTransform>();
 
             inst = new GameObject("SpaceCell_Bottom");
             inst.transform.SetParent(Content);
             inst.transform.localScale = Vector3.one;
-            rt_SpcCell_Bottom = inst.AddComponent<RectTransform>();
+            m_rt_spcCell_bottom = inst.AddComponent<RectTransform>();
 
             ResetContentSizeFitter();
             ResetSpaceCellsHierarchy();
@@ -76,7 +76,7 @@ namespace RecycleScroll
             ResetMaxGroupWidthValue();
         }
 
-        public Dictionary<int, RecycleScrollerCell> GetAllActivatedCells() => m_dic_ActivatedCells;
+        public Dictionary<int, RecycleScrollerCell> GetAllActivatedCells() => m_dict_activatedCells;
 
         /// <returns>Content의 가장 처음으로부터 얼만큼 떨어져 있는 지 계산하여 반환</returns>
         private float CalculateDistanceTo(int cellIndex)
@@ -95,32 +95,32 @@ namespace RecycleScroll
 
         public void ClearCellCollections()
         {
-            m_dic_ActivatedCells.Clear();
+            m_dict_activatedCells.Clear();
             PushAllActivatedGroups();
         }
         private void PushAllActivatedGroups()
         {
-            foreach (var groupIndex in m_dic_ActivatedGroups.Keys)
+            foreach (var groupIndex in m_dict_activatedGroups.Keys)
             {
-                var curGroup = m_dic_ActivatedGroups[groupIndex];
+                var curGroup = m_dict_activatedGroups[groupIndex];
                 if (!curGroup) continue;
 
                 PushIntoGroupStack(curGroup);
             }
 
-            m_dic_ActivatedGroups.Clear();
+            m_dict_activatedGroups.Clear();
         }
         private void PushAllActivatedCells()
         {
-            foreach (var cellIndex in m_dic_ActivatedCells.Keys)
+            foreach (var cellIndex in m_dict_activatedCells.Keys)
             {
-                var curCell = m_dic_ActivatedCells[cellIndex];
+                var curCell = m_dict_activatedCells[cellIndex];
                 if (!curCell) continue;
 
                 PushIntoCellStack(curCell);
             }
 
-            m_dic_ActivatedCells.Clear();
+            m_dict_activatedCells.Clear();
         }
 
         [return: NotNull] private GameObject CreateEmptyGameObject(string name, [NotNull] Transform parent)
@@ -164,7 +164,7 @@ namespace RecycleScroll
         {
             if (isActiveAndEnabled == false || Content == false) return;
 
-            LayoutRebuilder.MarkLayoutForRebuild(rectTransform);
+            LayoutRebuilder.MarkLayoutForRebuild(_RectTransform);
         }
 
         #endregion
@@ -204,23 +204,23 @@ namespace RecycleScroll
             };
 
             var pivot = Vector2.up;
-            if (rt_SpcCell_Top)
+            if (m_rt_spcCell_top)
             {
-                rt_SpcCell_Top.sizeDelta = size;
-                rt_SpcCell_Top.pivot = pivot;
+                m_rt_spcCell_top.sizeDelta = size;
+                m_rt_spcCell_top.pivot = pivot;
             }
 
-            if (rt_SpcCell_Bottom)
+            if (m_rt_spcCell_bottom)
             {
-                rt_SpcCell_Bottom.sizeDelta = size;
-                rt_SpcCell_Bottom.pivot = pivot;
+                m_rt_spcCell_bottom.sizeDelta = size;
+                m_rt_spcCell_bottom.pivot = pivot;
             }
         }
 
         private void ResetSpaceCellsHierarchy()
         {
-            rt_SpcCell_Top?.SetAsFirstSibling();
-            rt_SpcCell_Bottom?.SetAsLastSibling();
+            m_rt_spcCell_top?.SetAsFirstSibling();
+            m_rt_spcCell_bottom?.SetAsLastSibling();
         }
 
         private Type GetNeedLayoutGroupType()
@@ -261,7 +261,9 @@ namespace RecycleScroll
         {
             if (Content.TryGetComponent<HorizontalOrVerticalLayoutGroup>(out var layoutGroup) == false) return;
 
-            var copyPadding = new RectOffset(m_Padding.left, m_Padding.right, m_Padding.top, m_Padding.bottom);
+            m_padding ??= new();
+
+            var copyPadding = new RectOffset(m_padding.left, m_padding.right, m_padding.top, m_padding.bottom);
             if (m_loopScrollable)
             {
                 switch (ScrollAxis)
@@ -279,27 +281,27 @@ namespace RecycleScroll
 
             layoutGroup.padding = copyPadding;
             layoutGroup.spacing = Spacing;
-            layoutGroup.childAlignment = m_ChildAlignment;
-            layoutGroup.reverseArrangement = m_Reverse;
+            layoutGroup.childAlignment = m_childAlignment;
+            layoutGroup.reverseArrangement = m_reverse;
 
             switch (ScrollAxis)
             {
                 case eScrollAxis.VERTICAL:
-                    m_ControlChildSize.height = false;
-                    m_ChildForceExpand.height = false;
+                    m_controlChildSize.height = false;
+                    m_childForceExpand.height = false;
                     break;
                 case eScrollAxis.HORIZONTAL:
-                    m_ControlChildSize.width = false;
-                    m_ChildForceExpand.width = false;
+                    m_controlChildSize.width = false;
+                    m_childForceExpand.width = false;
                     break;
             }
 
-            layoutGroup.childControlHeight = ScrollAxis == eScrollAxis.HORIZONTAL || m_ControlChildSize.height;
-            layoutGroup.childControlWidth = ScrollAxis == eScrollAxis.VERTICAL || m_ControlChildSize.width;
-            layoutGroup.childScaleHeight = m_UseChildScale.height;
-            layoutGroup.childScaleWidth = m_UseChildScale.width;
-            layoutGroup.childForceExpandHeight = ScrollAxis == eScrollAxis.HORIZONTAL || m_ChildForceExpand.height;
-            layoutGroup.childForceExpandWidth = ScrollAxis == eScrollAxis.VERTICAL || m_ChildForceExpand.width;
+            layoutGroup.childControlHeight = ScrollAxis == eScrollAxis.HORIZONTAL || m_controlChildSize.height;
+            layoutGroup.childControlWidth = ScrollAxis == eScrollAxis.VERTICAL || m_controlChildSize.width;
+            layoutGroup.childScaleHeight = m_useChildScale.height;
+            layoutGroup.childScaleWidth = m_useChildScale.width;
+            layoutGroup.childForceExpandHeight = ScrollAxis == eScrollAxis.HORIZONTAL || m_childForceExpand.height;
+            layoutGroup.childForceExpandWidth = ScrollAxis == eScrollAxis.VERTICAL || m_childForceExpand.width;
         }
 
         private Vector2 GetAlignmentPoint()
@@ -308,7 +310,7 @@ namespace RecycleScroll
             // 수평 스크롤일 경우 왼쪽, 그리고 layoutGroup의 child alignment값에 따라 상단, 중앙, 하단으로 설정
             var x = ScrollAxis switch
             {
-                eScrollAxis.VERTICAL => m_ChildAlignment switch
+                eScrollAxis.VERTICAL => m_childAlignment switch
                 {
                     TextAnchor.UpperLeft or TextAnchor.LowerLeft or TextAnchor.MiddleLeft => 0f,
                     TextAnchor.UpperCenter or TextAnchor.LowerCenter or TextAnchor.MiddleCenter => 0.5f,
@@ -319,7 +321,7 @@ namespace RecycleScroll
             };
             var y = ScrollAxis switch
             {
-                eScrollAxis.HORIZONTAL => m_ChildAlignment switch
+                eScrollAxis.HORIZONTAL => m_childAlignment switch
                 {
                     TextAnchor.LowerLeft or TextAnchor.LowerCenter or TextAnchor.LowerRight => 0f,
                     TextAnchor.MiddleLeft or TextAnchor.MiddleCenter or TextAnchor.MiddleRight => 0.5f,
@@ -346,7 +348,7 @@ namespace RecycleScroll
         {
             var totalSize = RealContentSize;
             var viewportSize = ViewportSize;
-            float axisSize = m_FitContentToViewport && totalSize < viewportSize
+            float axisSize = m_fitContentToViewport && totalSize < viewportSize
                 ? viewportSize
                 : totalSize;
 
@@ -370,15 +372,15 @@ namespace RecycleScroll
             if (layout == false) return;
 
             layout.padding = new RectOffset();
-            layout.spacing = m_SpacingInGroup;
-            layout.childAlignment = m_ChildAlignment;
-            layout.reverseArrangement = m_Reverse;
-            layout.childControlWidth = m_ControlChildSize.width;
-            layout.childControlHeight = m_ControlChildSize.height;
-            layout.childScaleWidth = m_UseChildScale.width;
-            layout.childScaleHeight = m_UseChildScale.height;
-            layout.childForceExpandWidth = m_ChildForceExpand.width;
-            layout.childForceExpandHeight = m_ChildForceExpand.height;
+            layout.spacing = m_spacingInGroup;
+            layout.childAlignment = m_childAlignment;
+            layout.reverseArrangement = m_reverse;
+            layout.childControlWidth = m_controlChildSize.width;
+            layout.childControlHeight = m_controlChildSize.height;
+            layout.childScaleWidth = m_useChildScale.width;
+            layout.childScaleHeight = m_useChildScale.height;
+            layout.childForceExpandWidth = m_childForceExpand.width;
+            layout.childForceExpandHeight = m_childForceExpand.height;
 
             if (layout.TryGetComponent<RectTransform>(out var rtf) == false)
                 rtf = layout.gameObject.AddComponent<RectTransform>();
@@ -388,10 +390,10 @@ namespace RecycleScroll
             switch (ScrollAxis)
             {
                 case eScrollAxis.VERTICAL:
-                    sizeDelta.x = Content.rect.width - m_Padding.left - m_Padding.right;
+                    sizeDelta.x = Content.rect.width - m_padding.left - m_padding.right;
                     break;
                 case eScrollAxis.HORIZONTAL:
-                    sizeDelta.y = Content.rect.height - m_Padding.top - m_Padding.bottom;
+                    sizeDelta.y = Content.rect.height - m_padding.top - m_padding.bottom;
                     break;
             }
 
@@ -471,11 +473,11 @@ namespace RecycleScroll
         {
             var type = prefab.GetType();
             // 이미 활성화되어 있는 셀이라면 해당 셀 반환
-            if (m_dic_ActivatedCells.TryGetValue(dataIndex, out var cell) && cell?.GetType() == type) return cell;
+            if (m_dict_activatedCells.TryGetValue(dataIndex, out var cell) && cell?.GetType() == type) return cell;
             // 입력 프리팹과 다른 타입의 셀이라면 해당 셀을 풀에 반환
             if (cell) PushIntoCellStack(cell);
 
-            m_dic_ActivatedCells.Remove(dataIndex);
+            m_dict_activatedCells.Remove(dataIndex);
 
             var mergedSubKey = GetMergedSubKey(subKeys);
             var ret = PopFromCellStack(prefab, dataIndex, type, mergedSubKey);
@@ -504,9 +506,9 @@ namespace RecycleScroll
 
         [return: NotNull] private Stack<RecycleScrollerCell> GetCellStack(Type type, string subKey = DEFAULT_POOL_SUBKEY)
         {
-            if (m_pool_Cells.ContainsKey(type) == false) m_pool_Cells.Add(type, new());
+            if (m_pool_cells.ContainsKey(type) == false) m_pool_cells.Add(type, new());
 
-            var mainPool = m_pool_Cells[type];
+            var mainPool = m_pool_cells[type];
             if (string.IsNullOrEmpty(subKey)) subKey = DEFAULT_POOL_SUBKEY;
             if (mainPool.ContainsKey(subKey) == false) mainPool.Add(subKey, new());
 
@@ -554,7 +556,7 @@ namespace RecycleScroll
         {
             var groupRect = groupObject.GetComponent<RectTransform>();
             var sizeDelta = groupRect.sizeDelta;
-            var groupSize = m_list_groupDatas[groupIndex].size;
+            var groupSize = m_list_groupData[groupIndex].size;
             switch (ScrollAxis)
             {
                 case eScrollAxis.VERTICAL:
@@ -587,7 +589,7 @@ namespace RecycleScroll
         {
             var needType = GetNeedLayoutGroupTypeOfGroupCell();
 
-            var pop = m_pool_Groups.Count > 0 ? m_pool_Groups.Pop() : null;
+            var pop = m_pool_groups.Count > 0 ? m_pool_groups.Pop() : null;
             if (pop && pop.GetType() != needType)
             {
                 Destroy(pop.gameObject);
@@ -611,7 +613,7 @@ namespace RecycleScroll
             group.gameObject.SetActive(false);
             group.transform.SetParent(Tf_GroupPool);
 
-            m_pool_Groups.Push(group);
+            m_pool_groups.Push(group);
         }
 
         #endregion
@@ -685,9 +687,9 @@ namespace RecycleScroll
         /// <param name="offset">위치 오프셋 값</param>
         public void MoveTo_UsePagingEaseConfig(float pos, float duration = 0f, bool normalizedPos = true, float offset = 0f)
         {
-            var useCustomEase = m_PagingData.useCustomEase;
-            if (useCustomEase) MoveTo(pos, m_PagingData.customEase, duration, normalizedPos, offset);
-            else MoveTo(pos, m_PagingData.easeFunction, duration, normalizedPos, offset);
+            var useCustomEase = m_pagingData.useCustomEase;
+            if (useCustomEase) MoveTo(pos, m_pagingData.customEase, duration, normalizedPos, offset);
+            else MoveTo(pos, m_pagingData.easeFunction, duration, normalizedPos, offset);
         }
 
         #endregion
@@ -837,7 +839,7 @@ namespace RecycleScroll
         public void MoveToPage(int pageIndex)
         {
             var pagePosition = GetPagePivotPos(pageIndex);
-            MoveTo(pagePosition, m_PagingData.duration, false, m_PagingData.PagePivot);
+            MoveTo(pagePosition, m_pagingData.duration, false, m_pagingData.PagePivot);
         }
         public void MoveToNextPage() => MoveToPage(NextRealPageIndex);
         public void MoveToPrevPage() => MoveToPage(PrevRealPageIndex);
@@ -916,7 +918,7 @@ namespace RecycleScroll
 
         void IEndDragHandler.OnEndDrag(PointerEventData eventData)
         {
-            if (m_PagingData.usePaging) StartPagingCor();
+            if (m_pagingData.usePaging) StartPagingCor();
             onEndDrag?.Invoke();
         }
 
@@ -926,7 +928,7 @@ namespace RecycleScroll
 
         private void ChangeCurrentPageIndex(int current)
         {
-            if (m_PagingData.usePaging == false) return;
+            if (m_pagingData.usePaging == false) return;
 
             onChangePage?.Invoke(m_prevPageIndexByScrollPos, current);
             m_prevPageIndexByScrollPos = current;
@@ -940,8 +942,8 @@ namespace RecycleScroll
             if (nearestPageIndex == -1) return;
 
             var endPos = Mathf.Clamp01((GetPagePivotPos(nearestPageIndex) - PagePivotPosInViewport) / RealScrollSize);
-            var duration = m_PagingData.duration;
-            StartMoveContentCor(() => Cor_MoveContent(endPos, duration, (s, e, d) => m_PagingData.EvaluateEase(s, e, d)));
+            var duration = m_pagingData.duration;
+            StartMoveContentCor(() => Cor_MoveContent(endPos, duration, (s, e, d) => m_pagingData.EvaluateEase(s, e, d)));
         }
 
         private int ConvertToShowPageIndex(int realPageIndex)
@@ -967,7 +969,7 @@ namespace RecycleScroll
         {
             if (m_dp_pagePos == null || m_dp_pagePos.Count == 0) return 0f;
             if (pageIndex < 0 || pageIndex >= m_dp_pagePos.Count) return 0f;
-            return m_dp_pagePos[pageIndex] + GetPageSize(pageIndex) * m_PagingData.PagePivot;
+            return m_dp_pagePos[pageIndex] + GetPageSize(pageIndex) * m_pagingData.PagePivot;
         }
 
         private float GetPageSize(int pageIndex)
@@ -981,14 +983,14 @@ namespace RecycleScroll
 
         private int FindPageIndex_FromGroupIndex(int groupIndex)
         {
-            if (m_PagingData.usePaging == false) return -1;
+            if (m_pagingData.usePaging == false) return -1;
 
-            var pageIndex = groupIndex / m_PagingData.countPerPage;
+            var pageIndex = groupIndex / m_pagingData.countPerPage;
             return pageIndex;
         }
         private int FindPageIndex_FromCellIndex(int cellIndex)
         {
-            if (m_PagingData.usePaging == false) return -1;
+            if (m_pagingData.usePaging == false) return -1;
             if (cellIndex < 0 || cellIndex >= m_cellCount) return -1;
 
             var groupIndex = m_dict_groupIndexOfCell[cellIndex];
@@ -1060,22 +1062,22 @@ namespace RecycleScroll
                 var groupIndex = m_dict_groupIndexOfCell[targetCellIndex];
 
                 // 속한 그룹의 가장 첫 셀 인덱스 확인
-                var groupStartIndex = m_list_groupDatas[groupIndex].startDataIndex;
+                var groupStartIndex = m_list_groupData[groupIndex].startDataIndex;
 
                 // 그룹 관련 리스트들의 요소들 중 groupIndex 이상의 값들을 초기화 및 제거
                 ResetRealContentSize();
                 if (groupIndex > 0)
                 {
                     var frontGroupIndex = groupIndex - 1;
-                    m_realContentSize += m_dp_groupPos[frontGroupIndex] + m_list_groupDatas[frontGroupIndex].size;
+                    m_realContentSize += m_dp_groupPos[frontGroupIndex] + m_list_groupData[frontGroupIndex].size;
                 }
 
                 m_dp_groupPos.RemoveRange(groupIndex, m_dp_groupPos.Count - groupIndex);
-                m_list_groupDatas.RemoveRange(groupIndex, m_list_groupDatas.Count - groupIndex);
+                m_list_groupData.RemoveRange(groupIndex, m_list_groupData.Count - groupIndex);
                 m_dict_groupIndexOfCell = m_dict_groupIndexOfCell.Where(x => x.Key < targetCellIndex).ToDictionary(x => x.Key, x => x.Value);
 
                 // 페이지 관련 리스트들의 요소들 중 pageIndex 이상의 값들을 초기화 및 제거
-                if (m_PagingData.usePaging)
+                if (m_pagingData.usePaging)
                 {
                     var pageIndex = FindPageIndex_FromCellIndex(targetCellIndex);
                     m_dp_pagePos.RemoveRange(pageIndex, m_dp_pagePos.Count - pageIndex);
@@ -1116,15 +1118,15 @@ namespace RecycleScroll
 
         private void SetScrollbarSize(float size)
         {
-            if (_Scrollbar == null) return;
+            if (Scrollbar == null) return;
 
-            _Scrollbar.SetSize(size);
+            Scrollbar.SetSize(size);
         }
         private void SetScrollbarSize() => SetScrollbarSize(ShowingContentSize > 0f ? ViewportSize / ShowingContentSize : 1f);
 
         private void SetScrollbarValueWithoutNotify()
         {
-            if (_Scrollbar == null) return;
+            if (Scrollbar == null) return;
 
             float normalizedPos;
             if (m_loopScrollable)
@@ -1139,7 +1141,7 @@ namespace RecycleScroll
                 normalizedPos = RealNormalizedScrollPosition;
             }
 
-            _Scrollbar.SetValueWithoutNotify(ScrollAxis is eScrollAxis.VERTICAL
+            Scrollbar.SetValueWithoutNotify(ScrollAxis is eScrollAxis.VERTICAL
                 ? 1f - normalizedPos
                 : normalizedPos);
         }
@@ -1186,7 +1188,7 @@ namespace RecycleScroll
         }
         private void OnEndDragForScrollbar(PointerEventData _)
         {
-            if (m_PagingData.usePaging) StartPagingCor();
+            if (m_pagingData.usePaging) StartPagingCor();
         }
 
         #endregion

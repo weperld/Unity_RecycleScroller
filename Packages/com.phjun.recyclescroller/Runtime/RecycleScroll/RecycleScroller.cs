@@ -18,17 +18,17 @@ namespace RecycleScroll
 
         #region Scroll Rect
 
-        private ScrollRect m_ScrollRect;
+        private ScrollRect m_scrollRect;
 
         public ScrollRect _ScrollRect
         {
             get
             {
-                if (m_ScrollRect) return m_ScrollRect;
+                if (m_scrollRect) return m_scrollRect;
 
-                if (!gameObject.TryGetComponent(out m_ScrollRect))
-                    m_ScrollRect = gameObject.AddComponent<ScrollRect>();
-                return m_ScrollRect;
+                if (!gameObject.TryGetComponent(out m_scrollRect))
+                    m_scrollRect = gameObject.AddComponent<ScrollRect>();
+                return m_scrollRect;
             }
         }
 
@@ -51,8 +51,8 @@ namespace RecycleScroll
             }
         }
 
-        [System.NonSerialized] private RectTransform m_rectSelf;
-        private RectTransform rectTransform
+        [NonSerialized] private RectTransform m_rectSelf;
+        private RectTransform _RectTransform
         {
             get
             {
@@ -67,21 +67,21 @@ namespace RecycleScroll
         #region Alignment Values
 
         private readonly OverwriteValue<TextAnchor> m_overwriteChildAlignment = new();
-        private TextAnchor CurrentTextAnchor => m_overwriteChildAlignment.GetValue(m_ChildAlignment);
+        private TextAnchor CurrentTextAnchor => m_overwriteChildAlignment.GetValue(m_childAlignment);
 
-        public ReadOnlyBoolVector2 UseChildScale => m_UseChildScale.AsReadOnly;
+        public ReadOnlyBoolVector2 UseChildScale => m_useChildScale.AsReadOnly;
 
         public float TopPadding { get; private set; }
 
         public float BottomPadding { get; private set; }
 
-        public float Spacing => m_Spacing;
+        public float Spacing => m_spacing;
 
         #endregion
 
         #region Scroll Axis
 
-        public eScrollAxis ScrollAxis => m_ScrollAxis;
+        public eScrollAxis ScrollAxis => m_scrollAxis;
 
         #endregion
 
@@ -98,13 +98,13 @@ namespace RecycleScroll
         }
         public int ShowingPageCount => RealPageCount - m_frontAdditionalPageCount - m_backAdditionalPageCount;
 
-        private float PagePivotPosInViewport => m_PagingData.ScrollViewPivot * ViewportSize;
+        private float PagePivotPosInViewport => m_pagingData.ScrollViewPivot * ViewportSize;
         private float PagePivotPosInScrollRect => PagePivotPosInViewport + RealScrollPosition;
 
         /// <summary>
         /// 현재 스크롤 위치(페이지 피벗 포함)를 기준으로 가장 가까운 페이지 인덱스 반환, 페이지 기능 미사용 시 -1 반환
         /// </summary>
-        public int NearestPageIndexByScrollPos => m_PagingData.usePaging ? FindShowingClosestPageIndexFrom(PagePivotPosInScrollRect) : -1;
+        public int NearestPageIndexByScrollPos => m_pagingData.usePaging ? FindShowingClosestPageIndexFrom(PagePivotPosInScrollRect) : -1;
 
         private int m_prevPageIndexByScrollPos = 0;
 
@@ -228,23 +228,23 @@ namespace RecycleScroll
         #region Scroll Bar
 
         private RecycleScrollbar m_scrollbar = null;
-        private RecycleScrollbar _Scrollbar
+        private RecycleScrollbar Scrollbar
         {
             get
             {
                 if (m_scrollbar)
                 {
-                    if (m_scrollbar == m_ScrollbarRef) return m_scrollbar;
+                    if (m_scrollbar == m_scrollbarRef) return m_scrollbar;
                     RemoveDragEventAtScrollbar(m_scrollbar);
-                    m_scrollbar.onValueChanged.RemoveListener(OnScrollbarValueChanged);
+                    m_scrollbar.OnValueChanged.RemoveListener(OnScrollbarValueChanged);
                 }
 
-                m_scrollbar = m_ScrollbarRef;
+                m_scrollbar = m_scrollbarRef;
                 if (m_scrollbar)
                 {
                     m_scrollbar.Del = this;
                     AddDragEventToScrollbar(m_scrollbar);
-                    m_scrollbar.onValueChanged.AddListener(OnScrollbarValueChanged);
+                    m_scrollbar.OnValueChanged.AddListener(OnScrollbarValueChanged);
                     NullifyScrollRectScrollbar();
                 }
 
@@ -256,54 +256,54 @@ namespace RecycleScroll
 
         #region Item Objects
 
-        private RectTransform rt_SpcCell_Top;    // vertical: top, horizontal: left
-        private RectTransform rt_SpcCell_Bottom; // vertical: bottom, horizontal: right
-        private Dictionary<int, RecycleScrollerCell> m_dic_ActivatedCells = new();
-        private Dictionary<int, HorizontalOrVerticalLayoutGroup> m_dic_ActivatedGroups = new();
+        private RectTransform m_rt_spcCell_top;    // vertical: top, horizontal: left
+        private RectTransform m_rt_spcCell_bottom; // vertical: bottom, horizontal: right
+        private readonly Dictionary<int, RecycleScrollerCell> m_dict_activatedCells = new();
+        private readonly Dictionary<int, HorizontalOrVerticalLayoutGroup> m_dict_activatedGroups = new();
 
-        public RectTransform Rt_TopSpaceCell => m_Reverse ? rt_SpcCell_Bottom : rt_SpcCell_Top;
-        public RectTransform Rt_BottomSpaceCell => m_Reverse ? rt_SpcCell_Top : rt_SpcCell_Bottom;
+        public RectTransform Rt_TopSpaceCell => m_reverse ? m_rt_spcCell_bottom : m_rt_spcCell_top;
+        public RectTransform Rt_BottomSpaceCell => m_reverse ? m_rt_spcCell_top : m_rt_spcCell_bottom;
 
         // 아이템 오브젝트 풀
-        private Dictionary<System.Type, Dictionary<string, Stack<RecycleScrollerCell>>> m_pool_Cells = new();
+        private readonly Dictionary<Type, Dictionary<string, Stack<RecycleScrollerCell>>> m_pool_cells = new();
         public const string DEFAULT_POOL_SUBKEY = "DEFAULT_POOL_SUBKEY";
         private const string TRASH_OBJECT_NAME = "[Trash]";
-        private Stack<HorizontalOrVerticalLayoutGroup> m_pool_Groups = new();
+        private readonly Stack<HorizontalOrVerticalLayoutGroup> m_pool_groups = new();
 
-        private Transform m_tf_CellPool;
-        private Transform m_tf_GroupPool;
+        private Transform m_tf_cellPool;
+        private Transform m_tf_groupPool;
         private Transform Tf_CellPool
         {
             get
             {
-                if (m_tf_CellPool == false)
+                if (m_tf_cellPool == false)
                 {
-                    m_tf_CellPool = CreateEmptyGameObject("CellPool", transform).transform;
-                    var canvasGroup = m_tf_CellPool.gameObject.AddComponent<CanvasGroup>();
+                    m_tf_cellPool = CreateEmptyGameObject("CellPool", transform).transform;
+                    var canvasGroup = m_tf_cellPool.gameObject.AddComponent<CanvasGroup>();
                     canvasGroup.alpha = 0f;
                     canvasGroup.blocksRaycasts = false;
                     canvasGroup.interactable = false;
                     canvasGroup.ignoreParentGroups = true;
                 }
 
-                return m_tf_CellPool;
+                return m_tf_cellPool;
             }
         }
         private Transform Tf_GroupPool
         {
             get
             {
-                if (m_tf_GroupPool == false)
+                if (m_tf_groupPool == false)
                 {
-                    m_tf_GroupPool = CreateEmptyGameObject("GroupPool", transform).transform;
-                    var canvasGroup = m_tf_GroupPool.gameObject.AddComponent<CanvasGroup>();
+                    m_tf_groupPool = CreateEmptyGameObject("GroupPool", transform).transform;
+                    var canvasGroup = m_tf_groupPool.gameObject.AddComponent<CanvasGroup>();
                     canvasGroup.alpha = 0f;
                     canvasGroup.blocksRaycasts = false;
                     canvasGroup.interactable = false;
                     canvasGroup.ignoreParentGroups = true;
                 }
 
-                return m_tf_GroupPool;
+                return m_tf_groupPool;
             }
         }
 
@@ -320,12 +320,12 @@ namespace RecycleScroll
         private readonly List<CellSizeVector> m_list_cellSizeVec = new();
         private readonly List<float> m_dp_pagePos = new();
         private readonly List<float> m_dp_groupPos = new();
-        private readonly List<CellGroupData> m_list_groupDatas = new();
+        private readonly List<CellGroupData> m_list_groupData = new();
         private Dictionary<int, int> m_dict_groupIndexOfCell = new();
         private float m_maxGroupWidth = 0f;
         private int m_cellCount = 0;
 
-        public int GroupCount => m_list_groupDatas.Count;
+        public int GroupCount => m_list_groupData.Count;
         public int CellCount => m_cellCount;
 
         #endregion
@@ -384,7 +384,7 @@ namespace RecycleScroll
         public Action onEndEasing;
 
         /// <summary>
-        /// Call when scroll direction changed
+        /// Call when a scroll direction changed
         /// </summary>
         public Action<eScrollDirection> onScrollDirectionChanged;
 
@@ -407,15 +407,15 @@ namespace RecycleScroll
         #endregion
 
 #if UNITY_EDITOR
-        public int Debug_ActiveCellCount => m_dic_ActivatedCells?.Count ?? 0;
-        public int Debug_ActiveGroupCount => m_dic_ActivatedGroups?.Count ?? 0;
+        public int Debug_ActiveCellCount => m_dict_activatedCells?.Count ?? 0;
+        public int Debug_ActiveGroupCount => m_dict_activatedGroups?.Count ?? 0;
         public int Debug_PooledCellCount
         {
             get
             {
-                if (m_pool_Cells == null) return 0;
+                if (m_pool_cells == null) return 0;
                 int total = 0;
-                foreach (var typeDict in m_pool_Cells.Values)
+                foreach (var typeDict in m_pool_cells.Values)
                     foreach (var stack in typeDict.Values)
                         total += stack.Count;
                 return total;

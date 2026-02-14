@@ -1,5 +1,6 @@
 using MathUtils;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace RecycleScroll
 {
@@ -7,40 +8,42 @@ namespace RecycleScroll
     {
         #region Alignment Values
 
-        [ColoredHeader("[Cell Alignment Values]", ColorHexTemplate.CT_HEX_FFFF99)]
-        [SerializeField] private RectOffset m_Padding;
-        [SerializeField] private float m_Spacing;
-        [SerializeField] private TextAnchor m_ChildAlignment;
-        [SerializeField] private bool m_Reverse;
-        [SerializeField] private BoolVector2 m_ControlChildSize;
-        [SerializeField] private BoolVector2 m_UseChildScale;
-        [SerializeField] private BoolVector2 m_ChildForceExpand;
+        [SerializeField] private RectOffset m_padding;
+        [SerializeField] private float m_spacing;
+        [SerializeField] private TextAnchor m_childAlignment;
+        [SerializeField] private bool m_reverse;
+        [SerializeField] private BoolVector2 m_controlChildSize;
+        [SerializeField] private BoolVector2 m_useChildScale;
+        [SerializeField] private BoolVector2 m_childForceExpand;
 
         #endregion
 
         #region Scroll Axis
 
-        [Space(10f), ColoredHeader("[Scroll Direction Axis]", ColorHexTemplate.CT_HEX_FFFF99)]
-        [SerializeField] private eScrollAxis m_ScrollAxis = eScrollAxis.VERTICAL;
+        [SerializeField] private eScrollAxis m_scrollAxis = eScrollAxis.VERTICAL;
+
+        #endregion
+
+        #region Scrollbar
+
+        [SerializeField] private RecycleScrollbar m_scrollbarRef;
 
         #endregion
 
         #region Fit Content Size To Viewport Size When Smaller
 
-        [Space(10f), ColoredHeader("[Content Size Fit To Viewport Size When Smaller]", ColorHexTemplate.CT_HEX_FFFF99)]
         [HelpBoxAuto("계산된 콘텐트의 사이즈가 뷰포트 사이즈보다 작은 경우 이를 뷰포트에 맞춥니다", HelpBoxMessageType.Info)]
-        [SerializeField] private bool m_FitContentToViewport = false;
+        [SerializeField] private bool m_fitContentToViewport = false;
 
         #endregion
 
         #region Cell Group Config
 
-        [Space(10f), ColoredHeader("[Cell Group Configs]", ColorHexTemplate.CT_HEX_FFFF99)]
         [SerializeField] private bool m_fixedCellCountInGroup = true;
         [SerializeField, Min(1)] private int m_fixedCellCount = 1;
         [SerializeField] private bool m_useMinMaxFlexibleCellCount = false;
         [SerializeField] private MinMaxInt m_flexibleCellCountLimit = new(1, 1);
-        [SerializeField] private float m_SpacingInGroup;
+        [SerializeField] private float m_spacingInGroup;
 
         public bool FixCellCountInGroup => m_fixedCellCountInGroup;
         public bool ShowMinMaxFlexibleCellCount => m_useMinMaxFlexibleCellCount && FixCellCountInGroup == false;
@@ -51,25 +54,21 @@ namespace RecycleScroll
 
         #region Page
 
-        [Space(10f), ColoredHeader("[Paging Configs]", ColorHexTemplate.CT_HEX_FFFF99)]
-        [SerializeField] private ScrollPagingConfig m_PagingData;
+        [SerializeField] private ScrollPagingConfig m_pagingData;
 
         #endregion
 
         #region Loop Scroll
 
-        [Space(10f), ColoredHeader("[Loop Scroll]", ColorHexTemplate.CT_HEX_FFFF99)]
         [HelpBoxAuto("이 옵션이 켜져 있는 경우, 스크롤 방향에 해당하는 패딩 값을 사용하지 않고, "
             + "Scroll Rect의 MovementType이 Unrestricted로 변경됩니다",
             hexColor: ColorHexTemplate.CT_HEX_FF3333)]
         [SerializeField] private bool m_loopScroll = false;
-        [SerializeField] private RecycleScrollbar m_ScrollbarRef;
 
         #endregion
 
         #region Pool Management
 
-        [Space(10f), ColoredHeader("[Pool Management]", ColorHexTemplate.CT_HEX_FFFF99)]
         [SerializeField, Min(0)] private int m_maxPoolSizePerType = 100;
 
         #endregion

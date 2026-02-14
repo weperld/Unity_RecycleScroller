@@ -330,7 +330,7 @@ public class SerializableDictionaryDrawer : PropertyDrawer
     /// </summary>
     private void AddCustomEntry(SerializedProperty property, object keyObj)
     {
-        var keyValuePairsProperty = property.FindPropertyRelative("_keyValuePairs");
+        var keyValuePairsProperty = property.FindPropertyRelative("m_keyValuePairs");
 
         // 1) 중복 키 검사
         bool isDuplicate = false;
@@ -389,7 +389,7 @@ public class SerializableDictionaryDrawer : PropertyDrawer
 
     private void InitializeReorderableList(SerializedProperty property)
     {
-        var keyValuePairsProperty = property.FindPropertyRelative("_keyValuePairs");
+        var keyValuePairsProperty = property.FindPropertyRelative("m_keyValuePairs");
 
         if (m_reorderableList == null)
         {
@@ -620,7 +620,7 @@ public class SerializableDictionaryDrawer : PropertyDrawer
 
     private void DrawClearButton(Rect position, SerializedProperty property)
     {
-        var keyValuePairs = property.FindPropertyRelative("_keyValuePairs");
+        var keyValuePairs = property.FindPropertyRelative("m_keyValuePairs");
         bool isEmpty = keyValuePairs.arraySize == 0;
         GUI.enabled = !isEmpty;
         var countStr = keyValuePairs.arraySize.ToString();

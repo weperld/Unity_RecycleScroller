@@ -338,14 +338,14 @@ namespace RecycleScroll
             m_list_cellSizeVec.Clear();
             m_dp_pagePos.Clear();
             m_dp_groupPos.Clear();
-            m_list_groupDatas.Clear();
+            m_list_groupData.Clear();
             m_dict_groupIndexOfCell.Clear();
         }
         private void ResetCollectionsForInsert()
         {
             m_dp_pagePos.Clear();
             m_dp_groupPos.Clear();
-            m_list_groupDatas.Clear();
+            m_list_groupData.Clear();
             m_dict_groupIndexOfCell.Clear();
         }
 
@@ -379,8 +379,8 @@ namespace RecycleScroll
         }
         private float GetMaxGroupWidth() => ScrollAxis switch
         {
-            eScrollAxis.VERTICAL => Viewport.rect.width - m_Padding.left - m_Padding.right,
-            eScrollAxis.HORIZONTAL => Viewport.rect.height - m_Padding.top - m_Padding.bottom,
+            eScrollAxis.VERTICAL => Viewport.rect.width - m_padding.left - m_padding.right,
+            eScrollAxis.HORIZONTAL => Viewport.rect.height - m_padding.top - m_padding.bottom,
             _ => 0f,
         };
 
@@ -401,12 +401,12 @@ namespace RecycleScroll
                 #endregion
 
                 #region 그룹 데이터 세팅
-                m_list_groupDatas.Add(newGroup);
+                m_list_groupData.Add(newGroup);
                 m_dp_groupPos.Add(startingPoint);
                 #endregion
 
                 #region 페이지 위치 세팅
-                if (m_PagingData.countPerPage > 0 && ((m_list_groupDatas.Count - 1) % m_PagingData.countPerPage) == 0)
+                if (m_pagingData.countPerPage > 0 && ((m_list_groupData.Count - 1) % m_pagingData.countPerPage) == 0)
                     m_dp_pagePos.Add(startingPoint);
                 #endregion
 
@@ -414,7 +414,7 @@ namespace RecycleScroll
                 var cellStartIndex = i;
                 var cellEndIndex = newGroup.endDataIndex;
                 for (int j = cellStartIndex; j <= cellEndIndex; j++)
-                    m_dict_groupIndexOfCell.Add(j, m_list_groupDatas.Count - 1);
+                    m_dict_groupIndexOfCell.Add(j, m_list_groupData.Count - 1);
                 #endregion
 
                 i = cellEndIndex + 1;
@@ -427,7 +427,7 @@ namespace RecycleScroll
         {
             // 페이지 기능 사용 중 마지막 페이지가 뷰포트 사이즈보다 작은 경우
             // 부족한 사이즈만큼의 빈 그룹 데이터 추가
-            if (m_PagingData.usePaging == false || m_PagingData.addEmptySpaceToLastPage == false) return;
+            if (m_pagingData.usePaging == false || m_pagingData.addEmptySpaceToLastPage == false) return;
 
             var lastPageIndex = RealPageCount - 1;
             var lastPagePos = m_dp_pagePos[lastPageIndex];
@@ -445,7 +445,7 @@ namespace RecycleScroll
                 startDataIndex = -1,
                 size = addedEmptySpaceSize
             };
-            m_list_groupDatas.Add(newGroup);
+            m_list_groupData.Add(newGroup);
             m_realContentSize += addedEmptySpaceSize + Spacing;
         }
 
@@ -468,14 +468,14 @@ namespace RecycleScroll
             // 각각의 추가할 그룹데이터 리스트는 뷰포트 사이즈만큼 찾아 추가
 
             #region 1. 맨 앞에 추가될 그룹 데이터 리스트 검사
-            var originalGroupCount = m_list_groupDatas.Count;
+            var originalGroupCount = m_list_groupData.Count;
             var startIndex = originalGroupCount - 1;
             var checkIndex = startIndex;
             var addingGroupsSize = 0f;
             for (; checkIndex >= 0 && addingGroupsSize - Spacing + TopPadding < viewportSize; checkIndex--)
-                addingGroupsSize += m_list_groupDatas[checkIndex].size + Spacing;
+                addingGroupsSize += m_list_groupData[checkIndex].size + Spacing;
             var endIndex = checkIndex;
-            var frontAddGroupList = m_list_groupDatas.GetSafeRange(endIndex, startIndex - endIndex + 1);
+            var frontAddGroupList = m_list_groupData.GetSafeRange(endIndex, startIndex - endIndex + 1);
             #endregion
 
             #region 2. 맨 뒤에 추가될 그룹 데이터 리스트 검사
@@ -483,9 +483,9 @@ namespace RecycleScroll
             checkIndex = startIndex;
             addingGroupsSize = 0f;
             for (; checkIndex < originalGroupCount && addingGroupsSize - Spacing + BottomPadding < viewportSize; checkIndex++)
-                addingGroupsSize += m_list_groupDatas[checkIndex].size + Spacing;
+                addingGroupsSize += m_list_groupData[checkIndex].size + Spacing;
             endIndex = checkIndex;
-            var backAddGroupList = m_list_groupDatas.GetSafeRange(startIndex, endIndex - startIndex + 1);
+            var backAddGroupList = m_list_groupData.GetSafeRange(startIndex, endIndex - startIndex + 1);
             #endregion
 
             #region 3. 양 끝에 그룹 데이터 리스트 추가에 따른 콜렉션 재계산
@@ -523,11 +523,11 @@ namespace RecycleScroll
             #endregion
 
             #region 페이지 위치 리스트 재계산
-            if (m_PagingData.usePaging)
+            if (m_pagingData.usePaging)
             {
                 // 앞에 추가된 그룹 데이터들이 속한 페이지 체크
-                var frontPageCount = frontAddCount / m_PagingData.countPerPage;
-                if (frontAddCount % m_PagingData.countPerPage > 0) frontPageCount++;
+                var frontPageCount = frontAddCount / m_pagingData.countPerPage;
+                if (frontAddCount % m_pagingData.countPerPage > 0) frontPageCount++;
                 frontPageCount++;
                 var frontAddPageStartIndex = m_dp_pagePos.Count - frontPageCount;
                 var frontPagePosList = m_dp_pagePos.GetSafeRange(frontAddPageStartIndex, frontPageCount)
@@ -535,8 +535,8 @@ namespace RecycleScroll
                 m_frontAdditionalPageCount = frontPageCount;
 
                 // 뒤에 추가된 그룹 데이터들이 속한 페이지 체크
-                var backPageCount = backAddCount / m_PagingData.countPerPage;
-                if (backAddCount % m_PagingData.countPerPage > 0) backPageCount++;
+                var backPageCount = backAddCount / m_pagingData.countPerPage;
+                if (backAddCount % m_pagingData.countPerPage > 0) backPageCount++;
                 backPageCount++;
                 var backPagePosList = m_dp_pagePos.GetSafeRange(0, backPageCount)
                     .Select(pos => pos + RealContentSize - m_addingBackContentSizeInLoop);
@@ -552,8 +552,8 @@ namespace RecycleScroll
             #endregion
 
             #region 4. 추가된 그룹 데이터 리스트를 각각의 양 끝에 추가
-            m_list_groupDatas.InsertRange(0, frontAddGroupList);
-            m_list_groupDatas.AddRange(backAddGroupList);
+            m_list_groupData.InsertRange(0, frontAddGroupList);
+            m_list_groupData.AddRange(backAddGroupList);
             #endregion
         }
         #endregion
@@ -570,7 +570,7 @@ namespace RecycleScroll
             // 3. 양 끝에 걸친 그룹의 인덱스를 이용해 보여야 하는 그룹들을 세팅
 
             #region 1. Calculate Boundary Position
-            int groupCount = m_list_groupDatas.Count;
+            int groupCount = m_list_groupData.Count;
             if (groupCount == 0) return;
 
             var contentPos = Content.anchoredPosition;
@@ -590,7 +590,7 @@ namespace RecycleScroll
                 : Mathf.Max(m_dp_groupPos[firstGroupViewIndex] - Spacing - TopPadding, 0f);
             var bottomSpaceGroupSize = lastGroupViewIndex == groupCount - 1
                 ? 0f
-                : Mathf.Max(RealContentSize - (m_dp_groupPos[lastGroupViewIndex] + m_list_groupDatas[lastGroupViewIndex].size + Spacing) - BottomPadding, 0f);
+                : Mathf.Max(RealContentSize - (m_dp_groupPos[lastGroupViewIndex] + m_list_groupData[lastGroupViewIndex].size + Spacing) - BottomPadding, 0f);
             #endregion
 
             #region 3. Set Showing Groups
@@ -607,31 +607,31 @@ namespace RecycleScroll
                     break;
             }
 
-            Rt_TopSpaceCell.gameObject.SetActive(firstGroupViewIndex != (m_Reverse ? groupCount - 1 : 0));
+            Rt_TopSpaceCell.gameObject.SetActive(firstGroupViewIndex != (m_reverse ? groupCount - 1 : 0));
             Rt_TopSpaceCell.sizeDelta = axisVec * topSpaceGroupSize + widthVec;
-            Rt_BottomSpaceCell.gameObject.SetActive(lastGroupViewIndex != (m_Reverse ? 0 : groupCount - 1));
+            Rt_BottomSpaceCell.gameObject.SetActive(lastGroupViewIndex != (m_reverse ? 0 : groupCount - 1));
             Rt_BottomSpaceCell.sizeDelta = axisVec * bottomSpaceGroupSize + widthVec;
             #endregion
 
             #region Push Cells and Groups
             var pushCellIndexList = new List<int>();
             var pushGroupIndexList = new List<int>();
-            foreach (var groupIndex in m_dic_ActivatedGroups.Keys)
+            foreach (var groupIndex in m_dict_activatedGroups.Keys)
             {
-                if (m_Reverse
+                if (m_reverse
                     ? (lastGroupViewIndex <= groupIndex && groupIndex <= firstGroupViewIndex)
                     : (firstGroupViewIndex <= groupIndex && groupIndex <= lastGroupViewIndex))
                     continue;
 
                 pushGroupIndexList.Add(groupIndex);
-                PushIntoGroupStack(m_dic_ActivatedGroups[groupIndex]);
+                PushIntoGroupStack(m_dict_activatedGroups[groupIndex]);
 
-                var groupData = m_list_groupDatas[groupIndex];
+                var groupData = m_list_groupData[groupIndex];
                 for (int cellIndex = groupData.startDataIndex; cellIndex <= groupData.endDataIndex; cellIndex++)
                 {
-                    if (m_dic_ActivatedCells.ContainsKey(cellIndex) == false) continue;
+                    if (m_dict_activatedCells.ContainsKey(cellIndex) == false) continue;
 
-                    var pushCell = m_dic_ActivatedCells[cellIndex];
+                    var pushCell = m_dict_activatedCells[cellIndex];
                     pushCell.OnCellBecameInvisible(this);
                     onCellBecameInvisible?.Invoke(pushCell, cellIndex);
                     pushCellIndexList.Add(cellIndex);
@@ -640,33 +640,33 @@ namespace RecycleScroll
             }
 
             foreach (var pushIndex in pushCellIndexList)
-                m_dic_ActivatedCells.Remove(pushIndex);
+                m_dict_activatedCells.Remove(pushIndex);
             foreach (var pushIndex in pushGroupIndexList)
-                m_dic_ActivatedGroups.Remove(pushIndex);
+                m_dict_activatedGroups.Remove(pushIndex);
             #endregion
 
             #region Set Cells
-            int setStartIndex = m_Reverse ? firstGroupViewIndex : lastGroupViewIndex;
-            int setLastIndex = m_Reverse ? lastGroupViewIndex : firstGroupViewIndex;
-            int totalCellViewCount = m_list_groupDatas
-                .Where((w, index) => m_Reverse ? (setStartIndex <= index && index <= setLastIndex) : (setLastIndex <= index && index <= setStartIndex))
+            int setStartIndex = m_reverse ? firstGroupViewIndex : lastGroupViewIndex;
+            int setLastIndex = m_reverse ? lastGroupViewIndex : firstGroupViewIndex;
+            int totalCellViewCount = m_list_groupData
+                .Where((w, index) => m_reverse ? (setStartIndex <= index && index <= setLastIndex) : (setLastIndex <= index && index <= setStartIndex))
                 .Sum(s => s.cellCount);
             int lastCellViewIndex = totalCellViewCount - 1;
 
             for (int i = setStartIndex; i >= setLastIndex; i--)
             {
                 // 이미 활성화된 그룹이 존재하는 경우, 해당 그룹을 재활용
-                var isAlreadyActivated = m_dic_ActivatedGroups.ContainsKey(i) && m_dic_ActivatedGroups[i];
-                if (isAlreadyActivated == false) m_dic_ActivatedGroups.Remove(i);
+                var isAlreadyActivated = m_dict_activatedGroups.ContainsKey(i) && m_dict_activatedGroups[i];
+                if (isAlreadyActivated == false) m_dict_activatedGroups.Remove(i);
 
-                var getGroup = isAlreadyActivated ? m_dic_ActivatedGroups[i] : PopFromGroupStack();
+                var getGroup = isAlreadyActivated ? m_dict_activatedGroups[i] : PopFromGroupStack();
                 if (getGroup == false) continue;
 
-                var groupData = m_list_groupDatas[i];
+                var groupData = m_list_groupData[i];
                 var cellStartIndex = groupData.startDataIndex;
                 var cellLastIndex = groupData.endDataIndex;
-                var sortedStartIndex = m_Reverse ? cellLastIndex : cellStartIndex;
-                var sortedLastIndex = m_Reverse ? cellStartIndex : cellLastIndex;
+                var sortedStartIndex = m_reverse ? cellLastIndex : cellStartIndex;
+                var sortedLastIndex = m_reverse ? cellStartIndex : cellLastIndex;
                 var cellIsNothing = groupData.cellCount == 0;
 
                 // 존재했던 그룹이 아니라면 그룹 오브젝트 설정
@@ -679,10 +679,10 @@ namespace RecycleScroll
                 // 그룹 내 셀 설정
                 for (int j = sortedStartIndex; j <= sortedLastIndex && cellIsNothing == false; j++)
                 {
-                    var isAlreadyActivatedCell = m_dic_ActivatedCells.ContainsKey(j) && m_dic_ActivatedCells[j];
-                    if (isAlreadyActivatedCell == false) m_dic_ActivatedCells.Remove(j);
+                    var isAlreadyActivatedCell = m_dict_activatedCells.ContainsKey(j) && m_dict_activatedCells[j];
+                    if (isAlreadyActivatedCell == false) m_dict_activatedCells.Remove(j);
 
-                    var getCell = isAlreadyActivatedCell ? m_dic_ActivatedCells[j] : del.GetCell(this, j, lastCellViewIndex);
+                    var getCell = isAlreadyActivatedCell ? m_dict_activatedCells[j] : del.GetCell(this, j, lastCellViewIndex);
                     if (getCell == false) continue;
 
                     if (isAlreadyActivatedCell == false)
@@ -698,12 +698,12 @@ namespace RecycleScroll
                     }
 
                     getCell.SetCellViewIndex(lastCellViewIndex);
-                    m_dic_ActivatedCells.TryAdd(j, getCell);
+                    m_dict_activatedCells.TryAdd(j, getCell);
 
                     lastCellViewIndex--;
                 }
 
-                m_dic_ActivatedGroups.TryAdd(i, getGroup);
+                m_dict_activatedGroups.TryAdd(i, getGroup);
 
                 // 그룹 오브젝트의 하이어라키 위치 설정
                 getGroup.transform.SetSiblingIndex(1);
@@ -730,7 +730,7 @@ namespace RecycleScroll
         /// <returns>입력된 탐색 범위 내에서 보여지는 셀 중 처음과 끝 인덱스</returns>
         private (int firstIndex, int lastIndex) FindVisibleGroupIndices(float topBoundaryPos, float bottomBoundaryPos)
         {
-            var groupCount = m_list_groupDatas.Count;
+            var groupCount = m_list_groupData.Count;
             if (groupCount == 0) return (-1, -1);
 
             // 현재 범위에서 보여지는 셀 탐색
@@ -740,7 +740,7 @@ namespace RecycleScroll
             for (int i = 0; i < groupCount; i++)
             {
                 var pos = m_dp_groupPos[i];
-                var endPos = pos + m_list_groupDatas[i].size;
+                var endPos = pos + m_list_groupData[i].size;
                 if (endPos >= topBoundaryPos && pos <= bottomBoundaryPos)
                 {
                     if (firstIndex == -1) firstIndex = i;

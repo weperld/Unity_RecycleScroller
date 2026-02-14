@@ -8,9 +8,9 @@ public class ScrollPagingConfigDrawer : PropertyDrawer
     private Color offColorBack => ColorHexTemplate.CT_FF801A;
     private Color warningColor => ColorHexTemplate.CT_FF3333;
     
-    private readonly float toggleSize = 80f;
-    private readonly float toggleLabelPosX = 90f;
-    private readonly float warningLabelHeight = EditorDrawerHelper_ConstValues.DEFAULT_HELPBOX_HEIGHT;
+    private readonly float m_toggleSize = 80f;
+    private readonly float m_toggleLabelPosX = 90f;
+    private readonly float m_warningLabelHeight = EditorDrawerHelper_ConstValues.DEFAULT_HELPBOX_HEIGHT;
     
     public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
     {
@@ -21,7 +21,7 @@ public class ScrollPagingConfigDrawer : PropertyDrawer
         if (useVal == false) return height;
         
         // Warning Label On UsePaging
-        height += warningLabelHeight + EditorGUIUtility.standardVerticalSpacing;
+        height += m_warningLabelHeight + EditorGUIUtility.standardVerticalSpacing;
         
         // Check Foldout
         if (property.isExpanded == false) return height;
@@ -66,15 +66,15 @@ public class ScrollPagingConfigDrawer : PropertyDrawer
         var useGUIContent = new GUIContent(useVal ? "ON" : "OFF");
         var style = new GUIStyle(GUI.skin.button);
         style.fontStyle = FontStyle.Bold;
-        rect.width = toggleSize;
+        rect.width = m_toggleSize;
         GUI.backgroundColor = useVal ? onColorBack : offColorBack;
         if (GUI.Button(rect, useGUIContent, style))
             useVal = useProp.boolValue = !useVal;
         GUI.backgroundColor = Color.white;
         
         // Label
-        rect.x += toggleLabelPosX;
-        rect.width = position.width - toggleLabelPosX;
+        rect.x += m_toggleLabelPosX;
+        rect.width = position.width - m_toggleLabelPosX;
         if (useVal is false)
         {
             var labelRect = rect;
@@ -92,11 +92,11 @@ public class ScrollPagingConfigDrawer : PropertyDrawer
         
         #region Draw Warning Label
         rect.y += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
-        rect.height = warningLabelHeight;
+        rect.height = m_warningLabelHeight;
         EditorDrawerHelper.DrawCustomHelpBox(rect, "주의! 실행 시 ScrollRect의 Inertia가 꺼집니다. 이전 상태를 기억하지 않습니다!",
             MessageType.Warning, warningColor);
         rect.height = EditorGUIUtility.singleLineHeight;
-        rect.y += warningLabelHeight - EditorGUIUtility.singleLineHeight;
+        rect.y += m_warningLabelHeight - EditorGUIUtility.singleLineHeight;
         #endregion
         
         if (property.isExpanded == false) return;

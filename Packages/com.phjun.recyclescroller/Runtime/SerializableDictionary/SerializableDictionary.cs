@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Scripting;
+using UnityEngine.Serialization;
 
 namespace CustomSerialization
 {
@@ -31,7 +32,8 @@ namespace CustomSerialization
         IReadOnlyDictionary<TKey, TValue>,
         ISerializationCallbackReceiver
     {
-        [SerializeField] private List<SerializableKeyValuePair<TKey, TValue>> _keyValuePairs = new();
+        [SerializeField, FormerlySerializedAs("_keyValuePairs")]
+        private List<SerializableKeyValuePair<TKey, TValue>> m_keyValuePairs = new();
         private Dictionary<TKey, TValue> m_dictionary = new();
         
         public ICollection<TKey> Keys => m_dictionary.Keys;
@@ -52,9 +54,9 @@ namespace CustomSerialization
                 //if (m_dictionary.ContainsKey(key) == false) throw new KeyNotFoundException();
                 
                 m_dictionary[key] = value;
-                var index = _keyValuePairs.FindIndex(kvp => kvp.Key.Equals(key));
-                if (index >= 0) _keyValuePairs[index] = new SerializableKeyValuePair<TKey, TValue>(key, value);
-                else _keyValuePairs.Add(new SerializableKeyValuePair<TKey, TValue>(key, value));
+                var index = m_keyValuePairs.FindIndex(kvp => kvp.Key.Equals(key));
+                if (index >= 0) m_keyValuePairs[index] = new SerializableKeyValuePair<TKey, TValue>(key, value);
+                else m_keyValuePairs.Add(new SerializableKeyValuePair<TKey, TValue>(key, value));
             }
         }
         
@@ -65,15 +67,15 @@ namespace CustomSerialization
         public void Add(TKey key, TValue value)
         {
             m_dictionary.Add(key, value);
-            _keyValuePairs.Add(new SerializableKeyValuePair<TKey, TValue>(key, value));
+            m_keyValuePairs.Add(new SerializableKeyValuePair<TKey, TValue>(key, value));
         }
         
         public bool Remove(TKey key)
         {
             if (m_dictionary.Remove(key) == false) return false;
             
-            var index = _keyValuePairs.FindIndex(kvp => EqualityComparer<TKey>.Default.Equals(kvp.Key, key));
-            if (index >= 0) _keyValuePairs.RemoveAt(index);
+            var index = m_keyValuePairs.FindIndex(kvp => EqualityComparer<TKey>.Default.Equals(kvp.Key, key));
+            if (index >= 0) m_keyValuePairs.RemoveAt(index);
             return true;
         }
         
@@ -90,7 +92,7 @@ namespace CustomSerialization
         public void Clear()
         {
             m_dictionary.Clear();
-            _keyValuePairs.Clear();
+            m_keyValuePairs.Clear();
         }
         
         public void Add(KeyValuePair<TKey, TValue> item)
@@ -123,15 +125,15 @@ namespace CustomSerialization
         #region ISerializationCallbackReceiver 인터페이스 함수 구현
         public void OnBeforeSerialize()
         {
-            _keyValuePairs.Clear();
+            m_keyValuePairs.Clear();
             foreach (var kvp in m_dictionary)
             {
-                _keyValuePairs.Add(new SerializableKeyValuePair<TKey, TValue>(kvp.Key, kvp.Value));
+                m_keyValuePairs.Add(new SerializableKeyValuePair<TKey, TValue>(kvp.Key, kvp.Value));
             }
         }
         public void OnAfterDeserialize()
         {
-            m_dictionary = _keyValuePairs.ToDictionary(x => x.Key, x => x.Value);
+            m_dictionary = m_keyValuePairs.ToDictionary(x => x.Key, x => x.Value);
         }
         #endregion
         

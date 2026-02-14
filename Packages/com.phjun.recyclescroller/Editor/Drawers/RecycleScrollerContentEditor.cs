@@ -8,45 +8,45 @@ using UnityEngine.UI;
 [CanEditMultipleObjects]
 public class RecycleScrollerContentEditor : Editor
 {
-    Editor defaultEditor;
-    RectTransform rt;
-    RecycleScroller rs;
-    bool is_RS_Content = false;
+    Editor m_defaultEditor;
+    RectTransform m_rt;
+    RecycleScroller m_rs;
+    bool m_isRSContent = false;
 
-    readonly float propTitleLabelWidth = 120f;
-    readonly float fieldLabelWidth = 40f;
-    readonly float fieldMinWidth = 40f;
+    readonly float m_propTitleLabelWidth = 120f;
+    readonly float m_fieldLabelWidth = 40f;
+    readonly float m_fieldMinWidth = 40f;
 
     private void OnEnable()
     {
-        defaultEditor = Editor.CreateEditor(targets, System.Type.GetType("UnityEditor.RectTransformEditor, UnityEditor"));
-        rt = target as RectTransform;
-        if (rt == null) return;
+        m_defaultEditor = Editor.CreateEditor(targets, System.Type.GetType("UnityEditor.RectTransformEditor, UnityEditor"));
+        m_rt = target as RectTransform;
+        if (m_rt == null) return;
 
-        rs = rt.GetComponentInParent<RecycleScroller>(true);
-        is_RS_Content = rs != null && rs.Content == rt;
-        if (is_RS_Content)
+        m_rs = m_rt.GetComponentInParent<RecycleScroller>(true);
+        m_isRSContent = m_rs != null && m_rs.Content == m_rt;
+        if (m_isRSContent)
         {
-            rs.ResetContent_Pivot();
-            rs.ResetContent_Anchor();
+            m_rs.ResetContent_Pivot();
+            m_rs.ResetContent_Anchor();
         }
     }
 
     private void OnDisable()
     {
-        DestroyImmediate(defaultEditor);
+        DestroyImmediate(m_defaultEditor);
     }
 
     public override void OnInspectorGUI()
     {
-        if (is_RS_Content == false)
+        if (m_isRSContent == false)
         {
-            defaultEditor.OnInspectorGUI();
+            m_defaultEditor.OnInspectorGUI();
             return;
         }
 
-        var isVertical = rs.ScrollAxis == eScrollAxis.VERTICAL;
-        var parentHaveLayoutGroup = rt.parent.TryGetComponent<LayoutGroup>(out var _);
+        var isVertical = m_rs.ScrollAxis == eScrollAxis.VERTICAL;
+        var parentHaveLayoutGroup = m_rt.parent.TryGetComponent<LayoutGroup>(out var _);
 
         // Draw RecycleScrollContent RectTransform Inspector
         GUILayout.Space(2f);
@@ -61,35 +61,35 @@ public class RecycleScrollerContentEditor : Editor
 
         {
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Anchored Position", GUILayout.Width(propTitleLabelWidth));
+            EditorGUILayout.LabelField("Anchored Position", GUILayout.Width(m_propTitleLabelWidth));
 
-            EditorGUIUtility.labelWidth = fieldLabelWidth;
+            EditorGUIUtility.labelWidth = m_fieldLabelWidth;
 
-            var anchorPos = rt.anchoredPosition;
+            var anchorPos = m_rt.anchoredPosition;
 
             // x 필드
             EditorGUI.BeginChangeCheck();
-            anchorPos.x = DrawFloatField(parentHaveLayoutGroup, "Pos X", anchorPos.x, GUILayout.MinWidth(fieldMinWidth));
+            anchorPos.x = DrawFloatField(parentHaveLayoutGroup, "Pos X", anchorPos.x, GUILayout.MinWidth(m_fieldMinWidth));
             if (EditorGUI.EndChangeCheck())
             {
                 ApplyGUIChanged(
                     "Content Anchored Position(X) Change",
                     () =>
                     {
-                        rt.anchoredPosition = anchorPos;
+                        m_rt.anchoredPosition = anchorPos;
                     });
             }
 
             // y 필드
             EditorGUI.BeginChangeCheck();
-            anchorPos.y = DrawFloatField(parentHaveLayoutGroup, "Pos Y", anchorPos.y, GUILayout.MinWidth(fieldMinWidth));
+            anchorPos.y = DrawFloatField(parentHaveLayoutGroup, "Pos Y", anchorPos.y, GUILayout.MinWidth(m_fieldMinWidth));
             if (EditorGUI.EndChangeCheck())
             {
                 ApplyGUIChanged(
                     "Recycle Scroller Content Anchored Position(Y) Change",
                     () =>
                     {
-                        rt.anchoredPosition = anchorPos;
+                        m_rt.anchoredPosition = anchorPos;
                     });
             }
 
@@ -102,8 +102,8 @@ public class RecycleScrollerContentEditor : Editor
                     "Recycle Scroller Content Anchored Position(X, Y) Change",
                     () =>
                     {
-                        rt.anchoredPosition = Vector2.zero;
-                        rs._ScrollRect.velocity = Vector2.zero;
+                        m_rt.anchoredPosition = Vector2.zero;
+                        m_rs._ScrollRect.velocity = Vector2.zero;
                     });
             }
 
@@ -120,24 +120,24 @@ public class RecycleScrollerContentEditor : Editor
 
         {
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField("Size", GUILayout.Width(propTitleLabelWidth));
+            EditorGUILayout.LabelField("Size", GUILayout.Width(m_propTitleLabelWidth));
 
             // LabelWidth를 조절하여 Width와 Height 필드의 너비를 동일하게 맞춥니다.
-            EditorGUIUtility.labelWidth = fieldLabelWidth; // 레이블 너비 조정
+            EditorGUIUtility.labelWidth = m_fieldLabelWidth; // 레이블 너비 조정
 
-            var sizeDelta = rt.sizeDelta;
+            var sizeDelta = m_rt.sizeDelta;
 
             // Width 필드
-            DrawFloatField(true, "Width", sizeDelta.x, GUILayout.MinWidth(fieldMinWidth));
+            DrawFloatField(true, "Width", sizeDelta.x, GUILayout.MinWidth(m_fieldMinWidth));
 
             // Height 필드
-            DrawFloatField(true, "Height", sizeDelta.y, GUILayout.MinWidth(fieldMinWidth));
+            DrawFloatField(true, "Height", sizeDelta.y, GUILayout.MinWidth(m_fieldMinWidth));
 
             GUILayout.Space(5f);
             string btnStr = isVertical ? "Width" : "Height";
             if (GUILayout.Button($"Fit To Viewport {btnStr}"))
             {
-                var viewSize = isVertical ? rs.Viewport.rect.width : rs.Viewport.rect.height;
+                var viewSize = isVertical ? m_rs.Viewport.rect.width : m_rs.Viewport.rect.height;
                 if (isVertical) sizeDelta.x = viewSize;
                 else sizeDelta.y = viewSize;
 
@@ -145,7 +145,7 @@ public class RecycleScrollerContentEditor : Editor
                     "Recycle Scroller Content Size Change",
                     () =>
                     {
-                        rt.sizeDelta = sizeDelta;
+                        m_rt.sizeDelta = sizeDelta;
                     });
             }
 
@@ -169,7 +169,7 @@ public class RecycleScrollerContentEditor : Editor
     {
         if (GUI.changed == false) return;
 
-        Undo.RecordObject(rt, recordName);
+        Undo.RecordObject(m_rt, recordName);
         changeAction?.Invoke();
         EditorUtility.SetDirty(target);
     }

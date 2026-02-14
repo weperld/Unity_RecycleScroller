@@ -291,15 +291,15 @@ namespace RecycleScroll
     /// </summary>
     public class AndNode : INode
     {
-        private INode _left, _right;
+        private INode m_left, m_right;
         public AndNode(INode left, INode right)
         {
-            _left = left;
-            _right = right;
+            m_left = left;
+            m_right = right;
         }
         public bool Evaluate(int groupCount)
         {
-            return _left.Evaluate(groupCount) && _right.Evaluate(groupCount);
+            return m_left.Evaluate(groupCount) && m_right.Evaluate(groupCount);
         }
     }
 
@@ -308,15 +308,15 @@ namespace RecycleScroll
     /// </summary>
     public class OrNode : INode
     {
-        private INode _left, _right;
+        private INode m_left, m_right;
         public OrNode(INode left, INode right)
         {
-            _left = left;
-            _right = right;
+            m_left = left;
+            m_right = right;
         }
         public bool Evaluate(int groupCount)
         {
-            return _left.Evaluate(groupCount) || _right.Evaluate(groupCount);
+            return m_left.Evaluate(groupCount) || m_right.Evaluate(groupCount);
         }
     }
 

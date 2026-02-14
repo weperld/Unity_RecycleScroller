@@ -6,7 +6,6 @@ namespace RecycleScroll
     public partial class RecycleScroller
     {
 #if UNITY_EDITOR
-        [Space(20f), ColoredHeader("[Recycle Scroller - OnValidate]", ColorHexTemplate.CT_HEX_ADD8E6)]
         [SerializeField] private GameObject[] m_exampleLayoutGroups;
 
         private void OnValidate()
@@ -14,7 +13,7 @@ namespace RecycleScroll
             if (Application.isPlaying) return;
 
             UpdateScrollAxisToScrollRect();
-            if (m_FitContentToViewport)
+            if (m_fitContentToViewport)
                 Content.sizeDelta = ScrollAxis == eScrollAxis.VERTICAL
                     ? new Vector2(Viewport.rect.width, ViewportSize)
                     : new Vector2(ViewportSize, Viewport.rect.height);
