@@ -108,7 +108,7 @@ namespace RecycleScroll
         {
             INode left = ParseAndExpr();
 
-            while (Match(eTokenType.OR))
+            while (Match(TokenType.OR))
             {
                 m_pos++; // consume 'or'
                 INode right = ParseAndExpr();
@@ -123,7 +123,7 @@ namespace RecycleScroll
         {
             INode left = ParseFactor();
 
-            while (Match(eTokenType.AND))
+            while (Match(TokenType.AND))
             {
                 m_pos++; // consume 'and'
                 INode right = ParseFactor();
@@ -136,12 +136,12 @@ namespace RecycleScroll
         // Factor -> "(" OrExpr ")" | Condition
         private INode ParseFactor()
         {
-            if (Match(eTokenType.LPAREN))
+            if (Match(TokenType.LPAREN))
             {
                 m_pos++;                    // consume '('
                 INode expr = ParseOrExpr(); // 괄호 안에 다시 Expression 파싱
 
-                if (!Match(eTokenType.RPAREN))
+                if (!Match(TokenType.RPAREN))
                     throw new Exception("괄호가 올바르게 닫히지 않았습니다.");
 
                 m_pos++; // consume ')'
@@ -157,20 +157,20 @@ namespace RecycleScroll
         // 예: "10 >", "20 ==", "30 <=" ...
         private INode ParseCondition()
         {
-            if (!Match(eTokenType.NUMBER))
+            if (!Match(TokenType.NUMBER))
                 throw new Exception("숫자(정수)가 필요합니다.");
 
             var numberToken = m_tokens[m_pos];
             m_pos++;
 
-            if (!Match(eTokenType.COMPARE_OP))
+            if (!Match(TokenType.COMPARE_OP))
                 throw new Exception("비교 연산자가 필요합니다. (>, <, >=, <=, ==)");
 
             var opToken = m_tokens[m_pos];
             m_pos++;
 
             int standardValue = int.Parse(numberToken.m_value);
-            eEqualityType eqType = ConvertStringToEqualityType(opToken.m_value);
+            EqualityType eqType = ConvertStringToEqualityType(opToken.m_value);
 
             return new ConditionNode(eqType, standardValue);
         }
@@ -179,22 +179,22 @@ namespace RecycleScroll
 
         #region 내부 구현 (Token, 토큰화, 보조함수)
 
-        private bool Match(eTokenType type)
+        private bool Match(TokenType type)
         {
             if (m_pos < m_tokens.Count && m_tokens[m_pos].m_type == type)
                 return true;
             return false;
         }
 
-        private static eEqualityType ConvertStringToEqualityType(string op)
+        private static EqualityType ConvertStringToEqualityType(string op)
         {
             return op switch
             {
-                ">" => eEqualityType.LessThan,
-                ">=" => eEqualityType.LessThanOrEqual,
-                "<" => eEqualityType.GreaterThan,
-                "<=" => eEqualityType.GreaterThanOrEqual,
-                "==" => eEqualityType.Equal,
+                ">" => EqualityType.LessThan,
+                ">=" => EqualityType.LessThanOrEqual,
+                "<" => EqualityType.GreaterThan,
+                "<=" => EqualityType.GreaterThanOrEqual,
+                "==" => EqualityType.Equal,
                 _ => throw new Exception($"지원하지 않는 비교연산자: {op}")
             };
         }
@@ -215,14 +215,14 @@ namespace RecycleScroll
                 if (string.IsNullOrEmpty(val))
                     continue;
 
-                if (val == "(") tokens.Add(new Token(eTokenType.LPAREN, val));
-                else if (val == ")") tokens.Add(new Token(eTokenType.RPAREN, val));
-                else if (val == "and") tokens.Add(new Token(eTokenType.AND, val));
-                else if (val == "or") tokens.Add(new Token(eTokenType.OR, val));
+                if (val == "(") tokens.Add(new Token(TokenType.LPAREN, val));
+                else if (val == ")") tokens.Add(new Token(TokenType.RPAREN, val));
+                else if (val == "and") tokens.Add(new Token(TokenType.AND, val));
+                else if (val == "or") tokens.Add(new Token(TokenType.OR, val));
                 else if (Regex.IsMatch(val, @"^\d+$"))
-                    tokens.Add(new Token(eTokenType.NUMBER, val));
+                    tokens.Add(new Token(TokenType.NUMBER, val));
                 else if (val == "<" || val == "<=" || val == ">" || val == ">=" || val == "==")
-                    tokens.Add(new Token(eTokenType.COMPARE_OP, val));
+                    tokens.Add(new Token(TokenType.COMPARE_OP, val));
                 else
                     Debug.LogWarning($"[ExpressionParser] 알 수 없는 토큰: '{val}'");
             }
@@ -245,7 +245,7 @@ namespace RecycleScroll
     }
 
     // 비교 연산 Enum
-    public enum eEqualityType
+    public enum EqualityType
     {
         Equal,
         LessThan,
@@ -255,7 +255,7 @@ namespace RecycleScroll
     }
 
     // 파서에서 사용되는 토큰 종류
-    public enum eTokenType
+    public enum TokenType
     {
         LPAREN,    // "("
         RPAREN,    // ")"
@@ -267,9 +267,9 @@ namespace RecycleScroll
 
     public struct Token
     {
-        public readonly eTokenType m_type;
+        public readonly TokenType m_type;
         public readonly string m_value;
-        public Token(eTokenType t, string v)
+        public Token(TokenType t, string v)
         {
             m_type = t;
             m_value = v;
@@ -325,10 +325,10 @@ namespace RecycleScroll
     /// </summary>
     public class ConditionNode : INode
     {
-        private readonly eEqualityType m_eqType;
+        private readonly EqualityType m_eqType;
         private readonly int m_standardValue;
 
-        public ConditionNode(eEqualityType eqType, int stdValue)
+        public ConditionNode(EqualityType eqType, int stdValue)
         {
             m_eqType = eqType;
             m_standardValue = stdValue;
@@ -338,11 +338,11 @@ namespace RecycleScroll
         {
             switch (m_eqType)
             {
-                case eEqualityType.Equal: return groupCount == m_standardValue;
-                case eEqualityType.LessThan: return groupCount < m_standardValue;
-                case eEqualityType.GreaterThan: return groupCount > m_standardValue;
-                case eEqualityType.LessThanOrEqual: return groupCount <= m_standardValue;
-                case eEqualityType.GreaterThanOrEqual: return groupCount >= m_standardValue;
+                case EqualityType.Equal: return groupCount == m_standardValue;
+                case EqualityType.LessThan: return groupCount < m_standardValue;
+                case EqualityType.GreaterThan: return groupCount > m_standardValue;
+                case EqualityType.LessThanOrEqual: return groupCount <= m_standardValue;
+                case EqualityType.GreaterThanOrEqual: return groupCount >= m_standardValue;
             }
 
             return false;

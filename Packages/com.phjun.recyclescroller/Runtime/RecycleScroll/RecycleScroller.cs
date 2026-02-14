@@ -349,7 +349,7 @@ namespace RecycleScroll
 
         #region Load Data State
 
-        private eLoadDataProceedState m_loadDataProceedState = eLoadDataProceedState.NotLoaded;
+        private LoadDataProceedState m_loadDataProceedState = LoadDataProceedState.NotLoaded;
 
         private Coroutine m_cor_loadDataWaitBuffer = null;
         private readonly Queue<Action> m_loadDataWaitingActionBuffer = new();
@@ -421,7 +421,7 @@ namespace RecycleScroll
                 return total;
             }
         }
-        public eLoadDataProceedState Debug_LoadDataState => m_loadDataProceedState;
+        public LoadDataProceedState Debug_LoadDataState => m_loadDataProceedState;
 #endif
 
         #region Unity Default Events

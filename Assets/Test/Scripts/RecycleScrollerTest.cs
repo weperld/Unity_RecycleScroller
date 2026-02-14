@@ -236,7 +236,7 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
     private void ScrollToMiddleAnimated()
     {
         if (m_scroller == null) return;
-        m_scroller.MoveTo(0.5f, EaseUtil.eEase.EaseOutCubic, 0.5f);
+        m_scroller.MoveTo(0.5f, EaseUtil.Ease.EaseOutCubic, 0.5f);
         Debug.Log("[Test] Animated scroll to middle");
     }
 

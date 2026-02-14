@@ -59,7 +59,7 @@ namespace RecycleScroll
         public readonly float PagePivot => GetPivot(pagePivotType, pageCustomPivot);
         
         public bool useCustomEase;
-        public eEase easeFunction;
+        public Ease easeFunction;
         public AnimationCurve customEase;
         
         private readonly float GetPivot(eMagnetPivotType pivotType, float customValue)
@@ -91,7 +91,7 @@ namespace RecycleScroll
     /// <summary>
     /// LoadData 작업의 결과 상태를 나타내는 열거형.
     /// </summary>
-    public enum eLoadDataResultState
+    public enum LoadDataResultState
     {
         #region 동기/비동기 공통
         /// <summary>
@@ -125,7 +125,7 @@ namespace RecycleScroll
         #endregion
     }
 
-    public enum eLoadDataProceedState
+    public enum LoadDataProceedState
     {
         NotLoaded,
         Loading,
@@ -135,10 +135,10 @@ namespace RecycleScroll
     public class LoadDataCallbacks
     {
         private bool m_isInvoked = false;
-        private eLoadDataResultState m_result = eLoadDataResultState.Complete;
+        private LoadDataResultState m_result = LoadDataResultState.Complete;
 
-        private Action<eLoadDataResultState> m_complete;
-        public Action<eLoadDataResultState> Complete
+        private Action<LoadDataResultState> m_complete;
+        public Action<LoadDataResultState> Complete
         {
             get => m_complete;
             set
@@ -150,14 +150,14 @@ namespace RecycleScroll
             }
         }
 
-        public void Invoke(eLoadDataResultState result)
+        public void Invoke(LoadDataResultState result)
         {
             m_isInvoked = true;
             m_result = result;
             Internal_Invoke(result);
         }
 
-        private void Internal_Invoke(eLoadDataResultState result)
+        private void Internal_Invoke(LoadDataResultState result)
         {
             m_complete?.Invoke(result);
             m_complete = null;

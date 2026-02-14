@@ -17,14 +17,14 @@ public static partial class EditorDrawerHelper
         };
     }
 
-    public static MessageType ToMessageType(this eHelpBoxMessageType messageType)
+    public static MessageType ToMessageType(this HelpBoxMessageType messageType)
     {
         return messageType switch
         {
-            eHelpBoxMessageType.None => MessageType.None,
-            eHelpBoxMessageType.Info => MessageType.Info,
-            eHelpBoxMessageType.Warning => MessageType.Warning,
-            eHelpBoxMessageType.Error => MessageType.Error,
+            HelpBoxMessageType.None => MessageType.None,
+            HelpBoxMessageType.Info => MessageType.Info,
+            HelpBoxMessageType.Warning => MessageType.Warning,
+            HelpBoxMessageType.Error => MessageType.Error,
             _ => MessageType.None
         };
     }

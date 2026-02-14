@@ -27,9 +27,9 @@ namespace RecycleScroll
     {
         [SerializeField] private SerializableDictionary<TextAnchor, TConditionType> m_overwriteChildAlignment;
 
-        public override void LoadDataExtendFunction(RecycleScroller scroller, eLoadDataResultState state)
+        public override void LoadDataExtendFunction(RecycleScroller scroller, LoadDataResultState state)
         {
-            if (state is not eLoadDataResultState.Complete) return;
+            if (state is not LoadDataResultState.Complete) return;
 
             var groupCount = scroller.GroupCount;
 
