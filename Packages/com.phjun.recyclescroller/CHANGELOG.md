@@ -7,14 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-02-14
+
 ### Added
-- 비루프 모드: Elastic 오버슈트 시 핸들 사이즈 동적 축소 (Unity ScrollRect 동일 공식)
-- 루프 모드: 서브 핸들 Graphic을 DoStateTransition 색상 전환에 동적 등록
+- Elastic 핸들 사이즈 조정 동작 구현 (비루프: 오버슈트 시 핸들 축소, 루프: anchor 기반 서브 핸들 사이즈 전환)
+- ExtraTransitionEntry 독립 트랜지션 시스템 추가 (스크롤바 핸들 개별 ColorTint/SpriteSwap 설정)
+- 에디터 시작 시 패키지 버전 체크 팝업 기능 추가 (GitHub API 기반)
+
+### Fixed
+- Set 메서드 그룹의 Action<float> 변환 오류 수정
+- 테스트 스크립트 eEase enum 참조 누락 수정
 
 ### Changed
-- 루프 모드 서브 핸들: 위치 이동 방식 → anchor 기반 사이즈 전환 방식으로 재설계
-- 서브 핸들 부모를 handleRect → HandleContainerRect(Sliding Area)로 변경
-- UpdateLoopHandles() 호출 경로를 UpdateVisuals() 내 단일 경로로 통합
+- 루프/비루프 분기를 Strategy Pattern(IScrollerMode, IScrollbarMode)으로 객체화
+- RecycleScroller/Scrollbar 에디터를 계층적 폴드아웃 UI로 재구성
+- 에디터 드로어 공통 코드를 EditorDrawerHelper로 추출
+- private 필드 명명 규칙(m_ 접두사) 및 enum 명명 규칙(e 접두사) 정리
+
+### Documentation
+- 예정 작업 목록 정리 및 완료된 참조 코드 파일 삭제
 
 ## [1.1.0] - 2026-02-14
 

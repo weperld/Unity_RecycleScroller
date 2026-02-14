@@ -1,6 +1,6 @@
 {
   "name": "com.phjun.recyclescroller",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "displayName": "Recycle Scroller",
   "description": "High-performance recycling scroll system for Unity. Object Pooling based UGUI scroller.",
   "unity": "2022.3",
