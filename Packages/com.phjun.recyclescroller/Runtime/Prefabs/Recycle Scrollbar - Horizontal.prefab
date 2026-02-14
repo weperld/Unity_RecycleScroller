@@ -230,12 +230,12 @@ MonoBehaviour:
     m_DisabledTrigger: Disabled
   m_Interactable: 1
   m_TargetGraphic: {fileID: 3478996527617123136}
-  m_HandleRect: {fileID: 1145571088555905833}
-  m_Direction: 0
-  m_Value: 0
-  m_Size: 0.2
-  m_NumberOfSteps: 0
-  m_OnValueChanged:
+  m_handleRect: {fileID: 1145571088555905833}
+  m_direction: 0
+  m_value: 0
+  m_size: 0.2
+  m_numberOfSteps: 0
+  m_onValueChanged:
     m_PersistentCalls:
       m_Calls: []
   m_useFixedHandleSize: 0
@@ -254,7 +254,7 @@ MonoBehaviour:
   m_leftHandle: {fileID: 0}
   m_rightHandle: {fileID: 0}
   m_graphics: []
-  m_loopScrollSettingFoldout: 0
+  m_loopScrollSettingFoldout: 1
   m_eventFoldout: 0
 --- !u!114 &5155825545648120855
 MonoBehaviour:

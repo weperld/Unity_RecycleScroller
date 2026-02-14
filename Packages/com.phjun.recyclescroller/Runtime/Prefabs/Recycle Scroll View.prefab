@@ -197,36 +197,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e5b491fb4adfb842b003362e9f03c63, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Padding:
+  m_padding:
     m_Left: 0
     m_Right: 0
     m_Top: 0
     m_Bottom: 0
-  m_Spacing: 0
-  m_ChildAlignment: 0
-  m_Reverse: 0
-  m_ControlChildSize:
+  m_spacing: 0
+  m_childAlignment: 0
+  m_reverse: 0
+  m_controlChildSize:
     width: 0
     height: 0
-  m_UseChildScale:
+  m_useChildScale:
     width: 0
     height: 0
-  m_ChildForceExpand:
+  m_childForceExpand:
     width: 0
     height: 0
-  m_ScrollAxis: 0
-  m_FitContentToViewport: 0
+  m_scrollAxis: 0
+  m_scrollbarRef: {fileID: 0}
+  m_fitContentToViewport: 0
   m_fixedCellCountInGroup: 1
   m_fixedCellCount: 1
   m_useMinMaxFlexibleCellCount: 0
   m_flexibleCellCountLimit:
     min: 1
     max: 1
-  m_SpacingInGroup: 0
-  m_PagingData:
+  m_spacingInGroup: 0
+  m_pagingData:
     usePaging: 0
     addEmptySpaceToLastPage: 0
-    countPerPage: 1
+    countPerPage: 0
     duration: 0
     scrollViewPivotType: 0
     scrollViewCustomPivot: 0
@@ -241,7 +242,6 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   m_loopScroll: 0
-  m_ScrollbarRef: {fileID: 0}
   m_maxPoolSizePerType: 100
   m_exampleLayoutGroups:
   - {fileID: 6593186215082867383}
@@ -366,8 +366,8 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 5215450782810632851}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}

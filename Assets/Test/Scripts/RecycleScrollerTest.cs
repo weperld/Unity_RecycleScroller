@@ -210,9 +210,9 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
         }
 
         Debug.Log("=== RecycleScrollbar Info ==="
-            + $"\n  value: {m_scrollbar.value:F3}"
-            + $"\n  size: {m_scrollbar.size:F3}"
-            + $"\n  direction: {m_scrollbar.direction}"
+            + $"\n  value: {m_scrollbar.Value:F3}"
+            + $"\n  size: {m_scrollbar.Size:F3}"
+            + $"\n  direction: {m_scrollbar._Direction}"
             + $"\n  Del assigned: {m_scrollbar.Del != null}");
     }
 
