@@ -137,15 +137,15 @@ Grid 형태로 여러 셀을 한 행/열에 배치할 수 있습니다. 그룹�
 
 ---
 
-## 에이전트 필독 순서
+## 문서 참조 순서
 
 새로운 대화에서 작업을 시작할 때:
 
-1. **AGENTS.md** 읽기 (메뉴 및 지시 템플릿)
+1. **CLAUDE.md** (자동 로드 — 절대 규칙, 작업 방식)
 2. **PROJECT_SUMMARY.md** 읽기 (현재 파일)
-3. **QUICK_REFERENCE.md** 참조 (자주 쓰는 패턴)
+3. **WORK_IN_PROGRESS.md** 확인 (진행 중인 작업)
 4. 필요한 가이드 읽기 (CODE_STYLE.md, WORKFLOW_PLANNING/INDEX.md 등)
-5. **WORK_IN_PROGRESS.md** 확인 (진행 중인 작업)
+5. **AGENTS.md** 참조 (Self-Validation, Cross-Stage Review 등 필요 시)
 
 ---
 

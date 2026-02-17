@@ -300,22 +300,21 @@ Assets/
 
 ## 🎯 새 대화에서의 빠른 시작
 
-### 필독 순서 (중요!)
+### 문서 참조 순서
 ```
-1. AGENTS.md 읽기 (메뉴 확인)
+1. CLAUDE.md (자동 로드 — 절대 규칙, 작업 방식)
 2. PROJECT_SUMMARY.md 읽기 (프로젝트 이해)
-3. WORKFLOW_PLANNING/INDEX.md 읽기 (기획서 처리 방법)
-4. WORK_IN_PROGRESS.md 읽기 (현재 진행 중 작업 확인)
-5. 필요에 따라 상세 가이드 참조 (CODE_STYLE.md, TECHNICAL_RULES.md 등)
+3. WORK_IN_PROGRESS.md 읽기 (현재 진행 중 작업 확인)
+4. 필요에 따라 상세 가이드 참조 (CODE_STYLE.md, TECHNICAL_RULES.md 등)
+5. AGENTS.md 참조 (Self-Validation, Cross-Stage Review 등 필요 시)
 ```
 
 ### 작업 시작
 ```
-1. AGENTS.md에서 지시 템플릿 확인
-2. PROJECT_SUMMARY.md에서 프로젝트 컨텍스트 파악
-3. "요약: PROJ_SUMMARY"로 빠른 컨텍스트 전달
-4. "기획: ..." 또는 "수정: ..."로 작업 시작
-5. 모든 단계에서 WORK_IN_PROGRESS.md 자동 업데이트
+1. PROJECT_SUMMARY.md에서 프로젝트 컨텍스트 파악
+2. "요약: PROJ_SUMMARY"로 빠른 컨텍스트 전달
+3. 커스텀 명령어로 작업 시작 (/project:신규, /project:수정, /project:간편)
+4. 모든 단계에서 WORK_IN_PROGRESS.md 자동 업데이트
 ```
 
 ---

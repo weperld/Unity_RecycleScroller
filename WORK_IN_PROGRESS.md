@@ -61,7 +61,7 @@
 - **파일**: [대상 파일 목록]
 - **변경 내용**: [변경 사항 요약]
 - **시작일**: YYYY-MM-DD
-- **필독 순서 준수**: AGENTS.md → PROJECT_SUMMARY.md → WORKFLOW_PLANNING/INDEX.md → WORK_IN_PROGRESS.md
+- **문서 참조 순서**: CLAUDE.md(자동) → PROJECT_SUMMARY.md → WORK_IN_PROGRESS.md → 필요 시 AGENTS.md
 
 #### 💾 상태 스냅샷
 - **마지막 업데이트**: YYYY-MM-DD [단계명]
