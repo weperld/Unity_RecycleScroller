@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-02-18
+
+### Changed
+- Editor/VersionCheck 누락 메타 파일 추가
+- 슬래시 명령어의 AGENTS.md 참조를 CLAUDE.md로 변경
+- CLAUDE.md, AGENTS.md 경량화 및 슬래시 명령어 강화
+
+### Documentation
+- 문서의 AGENTS.md 참조를 CLAUDE.md로 변경 및 참조 순서 업데이트
+- Task 3 사전 분석 결과 문서화 (객체화 후보 패턴 정리)
+
 ## [1.2.0] - 2026-02-14
 
 ### Added
