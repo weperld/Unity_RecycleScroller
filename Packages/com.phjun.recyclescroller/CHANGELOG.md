@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-02-19
+
+### Fixed
+- Addressables 어셈블리 참조 누락으로 인한 컴파일 에러 수정
+
+### Changed
+- Addressables 패키지 의존성 추가
+
 ## [1.2.1] - 2026-02-18
 
 ### Changed
