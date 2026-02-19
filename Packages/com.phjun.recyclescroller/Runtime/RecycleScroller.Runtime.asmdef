@@ -2,7 +2,10 @@
     "name": "RecycleScroller.Runtime",
     "rootNamespace": "",
     "references": [
-        "UniTask"
+        "UniTask",
+        "UniTask.Addressables",
+        "Unity.Addressables",
+        "Unity.ResourceManager"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
