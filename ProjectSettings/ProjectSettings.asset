@@ -163,7 +163,9 @@ PlayerSettings:
   androidSupportedAspectRatio: 1
   androidMaxAspectRatio: 2.1
   applicationIdentifier:
+    Android: com.DefaultCompany.RecycleScroller
     Standalone: com.DefaultCompany.RecycleScroller
+    iPhone: com.DefaultCompany.RecycleScroller
   buildNumber:
     Standalone: 0
     VisionOS: 0
