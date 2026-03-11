@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-03-11
+
+### Fixed
+- Vertical 스크롤바 프리팹 방향값 및 직렬화 필드명 수정
+
+### Changed
+- Android, iPhone 플랫폼 applicationIdentifier 추가
+
+### Documentation
+- NEXT_TASKS 업데이트 — Task 5, 6 추가 및 Task 3 보류 처리
+
 ## [1.2.2] - 2026-02-19
 
 ### Fixed
