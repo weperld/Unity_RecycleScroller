@@ -52,15 +52,20 @@ namespace RecycleScroll
         }
 
         public void InitDrag(PointerEventData eventData,
-            RectTransform containerRect, RectTransform handleRect)
+            RectTransform containerRect, RectTransform handleRect, int axisIndex)
         {
             m_offset = Vector2.zero;
-            if (RectTransformUtility.RectangleContainsScreenPoint(
-                handleRect, eventData.pointerPressRaycast.screenPosition, eventData.enterEventCamera))
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                handleRect, eventData.pointerPressRaycast.screenPosition,
+                eventData.pressEventCamera, out var localMousePos))
             {
-                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                    handleRect, eventData.pointerPressRaycast.screenPosition,
-                    eventData.pressEventCamera, out var localMousePos))
+                float axisCoordinate = axisIndex == 0 ? localMousePos.x : localMousePos.y;
+                Rect handleLocalRect = handleRect.rect;
+                float axisMin = axisIndex == 0 ? handleLocalRect.xMin : handleLocalRect.yMin;
+                float axisMax = axisIndex == 0 ? handleLocalRect.xMax : handleLocalRect.yMax;
+
+                // 주축 기준으로 핸들 범위 안이면 오프셋 계산 (보조축 무시)
+                if (axisCoordinate >= axisMin && axisCoordinate <= axisMax)
                     m_offset = localMousePos - handleRect.rect.center;
             }
         }

@@ -475,7 +475,7 @@ namespace RecycleScroll
             if (m_containerRect == null)
                 return;
 
-            ScrollbarMode.InitDrag(eventData, m_containerRect, m_handleRect);
+            ScrollbarMode.InitDrag(eventData, m_containerRect, m_handleRect, (int)_Axis);
 
             if (Application.isPlaying)
                 OnBeginDragged.Invoke(eventData);
@@ -524,13 +524,18 @@ namespace RecycleScroll
         {
             while (m_isPointerDownAndNotDragging)
             {
-                if (!RectTransformUtility.RectangleContainsScreenPoint(m_handleRect, screenPosition, camera))
+                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    m_handleRect, screenPosition, camera, out var localMousePos))
                 {
-                    if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                        m_handleRect, screenPosition, camera, out var localMousePos))
-                    {
-                        var axisCoordinate = _Axis == Axis.Horizontal ? localMousePos.x : localMousePos.y;
+                    int axis = (int)_Axis;
+                    float axisCoordinate = axis == 0 ? localMousePos.x : localMousePos.y;
+                    Rect handleLocalRect = m_handleRect.rect;
+                    float axisMin = axis == 0 ? handleLocalRect.xMin : handleLocalRect.yMin;
+                    float axisMax = axis == 0 ? handleLocalRect.xMax : handleLocalRect.yMax;
 
+                    // 주축 기준으로 핸들 범위 밖일 때만 스텝 (보조축 무시)
+                    if (axisCoordinate < axisMin || axisCoordinate > axisMax)
+                    {
                         float change = axisCoordinate < 0 ? Size : -Size;
                         float newValue = Value + (ReverseValue ? change : -change);
 

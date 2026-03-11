@@ -30,7 +30,7 @@ namespace RecycleScroll
 
         /// <summary>드래그 시작 시 모드별 초기화</summary>
         void InitDrag(PointerEventData eventData,
-            RectTransform containerRect, RectTransform handleRect);
+            RectTransform containerRect, RectTransform handleRect, int axisIndex);
 
         /// <summary>드래그 중 모드별 값 계산</summary>
         void ProcessDrag(PointerEventData eventData,

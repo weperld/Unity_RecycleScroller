@@ -80,7 +80,7 @@ namespace RecycleScroll
         }
 
         public void InitDrag(PointerEventData eventData,
-            RectTransform containerRect, RectTransform handleRect)
+            RectTransform containerRect, RectTransform handleRect, int axisIndex)
         {
             // 루프 모드: delta 추적용 초기 커서 위치 기록
             if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
