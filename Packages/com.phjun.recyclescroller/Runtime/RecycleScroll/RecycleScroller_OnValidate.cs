@@ -29,6 +29,7 @@ namespace RecycleScroll
             CheckLayoutGroupToContent();
             SetAlignmentValuesToContentLayout();
             CheckLayoutGroupOfExampleLayoutGroup();
+            UpdateScrollbarSizeFromRect();
         }
 
         private void CheckLayoutGroupOfExampleLayoutGroup()
@@ -107,6 +108,29 @@ namespace RecycleScroll
 
             #endregion
         }
+
 #endif
+
+        private void Start()
+        {
+            UpdateScrollbarSizeFromRect();
+        }
+
+        /// <summary>
+        /// LoadData 호출 전 ScrollRect의 Content/Viewport 비율로 스크롤바 크기를 설정합니다.
+        /// 에디트 모드(OnValidate)와 런타임(Start) 모두에서 호출됩니다.
+        /// </summary>
+        private void UpdateScrollbarSizeFromRect()
+        {
+            if (m_scrollbarRef == null) return;
+
+            float viewportSize = ViewportSize;
+            float contentSize = ScrollAxis == eScrollAxis.VERTICAL
+                ? Content.rect.height
+                : Content.rect.width;
+
+            float size = contentSize > 0f ? Mathf.Clamp01(viewportSize / contentSize) : 1f;
+            m_scrollbarRef.Size = size;
+        }
     }
 }
