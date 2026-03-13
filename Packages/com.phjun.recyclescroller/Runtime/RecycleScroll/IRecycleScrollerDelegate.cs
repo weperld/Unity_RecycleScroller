@@ -6,12 +6,12 @@ namespace RecycleScroll
     public struct CellSizeVector
     {
         public float Size { get; }
-        public float Width { get; }
-        
-        public CellSizeVector(float size, float width)
+        public float CrossAxisSize { get; }
+
+        public CellSizeVector(float size, float crossAxisSize)
         {
             this.Size = size;
-            this.Width = width;
+            this.CrossAxisSize = crossAxisSize;
         }
     }
     
@@ -34,23 +34,23 @@ namespace RecycleScroll
         }
         
         private readonly Value m_sizeValue;
-        private readonly Value m_widthValue;
-        
+        private readonly Value m_crossAxisSizeValue;
+
         public float SizeScale => m_sizeValue.Scale;
-        public float WidthScale => m_widthValue.Scale;
+        public float CrossAxisSizeScale => m_crossAxisSizeValue.Scale;
         public float UnScaledSize => m_sizeValue.Val;
-        public float UnScaledWidth => m_widthValue.Val;
+        public float UnScaledCrossAxisSize => m_crossAxisSizeValue.Val;
         public float ScaledSize => m_sizeValue.ScaledVal;
-        public float ScaledWidth => m_widthValue.ScaledVal;
-        
-        public RSCellRect(float size, float width, float scale_size, float scale_width)
+        public float ScaledCrossAxisSize => m_crossAxisSizeValue.ScaledVal;
+
+        public RSCellRect(float size, float crossAxisSize, float scaleSize, float scaleCrossAxisSize)
         {
-            m_sizeValue = new Value(size, scale_size);
-            m_widthValue = new Value(width, scale_width);
+            m_sizeValue = new Value(size, scaleSize);
+            m_crossAxisSizeValue = new Value(crossAxisSize, scaleCrossAxisSize);
         }
-        public RSCellRect(float size, float width, float scale = 1f) : this(size, width, scale, scale) { }
-        public RSCellRect(Rect rect, Vector2 scale, eScrollAxis scrollAxis) : this(rect.size.Size(scrollAxis), rect.size.Width(scrollAxis),
-            scale.Size(scrollAxis), scale.Width(scrollAxis)) { }
+        public RSCellRect(float size, float crossAxisSize, float scale = 1f) : this(size, crossAxisSize, scale, scale) { }
+        public RSCellRect(Rect rect, Vector2 scale, eScrollAxis scrollAxis) : this(rect.size.Size(scrollAxis), rect.size.CrossAxisSize(scrollAxis),
+            scale.Size(scrollAxis), scale.CrossAxisSize(scrollAxis)) { }
         public RSCellRect(RectTransform rtf, eScrollAxis scrollAxis, Vector2 scale) : this(rtf.rect, scale, scrollAxis) { }
         public RSCellRect(RectTransform rtf, eScrollAxis scrollAxis, float scale = 1f) : this(rtf.rect, new Vector2(scale, scale), scrollAxis) { }
         public RSCellRect(RectTransform rtf, RecycleScroller scroller)
@@ -64,8 +64,8 @@ namespace RecycleScroll
                 })
         { }
         
-        public CellSizeVector ToUnScaledValues => new(UnScaledSize, UnScaledWidth);
-        public CellSizeVector ToScaledValues => new(ScaledSize, ScaledWidth);
+        public CellSizeVector ToUnScaledValues => new(UnScaledSize, UnScaledCrossAxisSize);
+        public CellSizeVector ToScaledValues => new(ScaledSize, ScaledCrossAxisSize);
         
         public static RSCellRect Default => new(0f, 0f);
     }
@@ -122,15 +122,15 @@ namespace RecycleScroll
                 eScrollAxis.HORIZONTAL => v2.x,
                 _ => 0f
             };
-        public static float Width(this Vector2 v2, eScrollAxis axis)
+        public static float CrossAxisSize(this Vector2 v2, eScrollAxis axis)
             => axis switch
             {
                 eScrollAxis.VERTICAL => v2.x,
                 eScrollAxis.HORIZONTAL => v2.y,
                 _ => 0f
             };
-        
+
         public static float Size(this Vector3 v3, eScrollAxis axis) => ((Vector2)v3).Size(axis);
-        public static float Width(this Vector3 v3, eScrollAxis axis) => ((Vector2)v3).Width(axis);
+        public static float CrossAxisSize(this Vector3 v3, eScrollAxis axis) => ((Vector2)v3).CrossAxisSize(axis);
     }
 }

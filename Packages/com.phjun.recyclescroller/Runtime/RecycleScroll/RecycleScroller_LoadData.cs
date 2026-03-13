@@ -779,7 +779,7 @@ namespace RecycleScroll
 
             // 그룹의 초기 너비와 크기를 설정
             var sizeVec = m_list_cellSizeVec[startIndex];
-            var cellsWidthInGroup = sizeVec.Width;
+            var cellsWidthInGroup = sizeVec.CrossAxisSize;
             var groupSize = sizeVec.Size;
 
             // 새로운 셀 그룹 데이터를 생성
@@ -822,7 +822,7 @@ namespace RecycleScroll
             bool CalculateCellGroupData(int index, ref float refGroupSize, ref float refCellsWidthInGroup, ref CellGroupData refNewGroup, bool checkMaxWidth)
             {
                 var l_sizeVec = m_list_cellSizeVec[index];
-                var nextCellWidth = l_sizeVec.Width;
+                var nextCellWidth = l_sizeVec.CrossAxisSize;
 
                 // 너비가 최대 그룹 너비를 넘는지 확인
                 if (checkMaxWidth && refCellsWidthInGroup + nextCellWidth > maxGroupWidth) return false;
