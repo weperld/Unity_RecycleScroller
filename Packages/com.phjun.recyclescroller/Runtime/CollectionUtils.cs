@@ -9,11 +9,13 @@ public static class CollectionUtils
     public static int FindClosestIndex<T>(this IEnumerable<T> positions, T pivot, Func<T, T, float> distanceFunc)
     {
         if (positions is null) return -1;
-        
-        return positions
+
+        var ordered = positions
             .Select((pos, index) => new { index, dist = distanceFunc(pos, pivot) })
             .OrderBy(o => o.dist)
-            .First().index;
+            .FirstOrDefault();
+
+        return ordered?.index ?? -1;
     }
     
     public static int FindClosestIndex(this IEnumerable<int> positionArray, int pivot) =>

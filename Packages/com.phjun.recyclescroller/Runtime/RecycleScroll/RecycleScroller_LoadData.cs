@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace RecycleScroll
 {
@@ -183,6 +184,11 @@ namespace RecycleScroll
             CalculateScrollValuesOnLoadData(_params);
             UpdateObjectsOnLoadData(_params);
 
+            if (m_loopScrollable)
+                m_overwriteMovementType.Overwrite(ScrollRect.MovementType.Unrestricted);
+            else
+                m_overwriteMovementType.RemoveOverwrite();
+
             SetLoadProceedState(LoadDataProceedState.Loaded);
             callbacks.Invoke(LoadDataResultState.Complete);
         }
@@ -253,6 +259,12 @@ namespace RecycleScroll
                 if (CheckContinuableLoadDataAsync(token, loadDataCallbacks, callID) == false) return;
 
                 UpdateObjectsOnLoadData(_params);
+
+                if (m_loopScrollable)
+                    m_overwriteMovementType.Overwrite(ScrollRect.MovementType.Unrestricted);
+                else
+                    m_overwriteMovementType.RemoveOverwrite();
+
                 loadDataCallbacks.Invoke(LoadDataResultState.Complete);
             }
             finally

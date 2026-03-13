@@ -18,9 +18,22 @@ public class RecycleScrollerEditor : Editor
 
     #region SerializedProperties
 
+    // Events
+    private SerializedProperty m_onValueChanged;
+
     // Scroll
     private SerializedProperty m_scrollAxis;
-    private SerializedProperty m_scrollbarRef;
+    private SerializedProperty m_viewport;
+    private SerializedProperty m_content;
+    private SerializedProperty m_movementType;
+    private SerializedProperty m_elasticity;
+    private SerializedProperty m_inertia;
+    private SerializedProperty m_decelerationRate;
+    private SerializedProperty m_scrollSensitivity;
+    private SerializedProperty m_useScrollbar;
+    private SerializedProperty m_verticalScrollbar;
+    private SerializedProperty m_horizontalScrollbar;
+    private SerializedProperty m_scrollbarVisibility;
 
     // Layout - Cell Alignment
     private SerializedProperty m_padding;
@@ -63,6 +76,7 @@ public class RecycleScrollerEditor : Editor
 
     // Scroll
     private static bool m_foldoutScrollAxis = DEFAULT_FOLD_OUT_STATE;
+    private static bool m_foldoutScrollRectSettings = DEFAULT_FOLD_OUT_STATE;
     private static bool m_foldoutScrollbar = DEFAULT_FOLD_OUT_STATE;
 
     // Layout
@@ -93,9 +107,22 @@ public class RecycleScrollerEditor : Editor
 
     private void OnEnable()
     {
+        // Events
+        m_onValueChanged = serializedObject.FindProperty("m_onValueChanged");
+
         // Scroll
         m_scrollAxis = serializedObject.FindProperty("m_scrollAxis");
-        m_scrollbarRef = serializedObject.FindProperty("m_scrollbarRef");
+        m_viewport = serializedObject.FindProperty("m_viewport");
+        m_content = serializedObject.FindProperty("m_content");
+        m_movementType = serializedObject.FindProperty("m_movementType");
+        m_elasticity = serializedObject.FindProperty("m_elasticity");
+        m_inertia = serializedObject.FindProperty("m_inertia");
+        m_decelerationRate = serializedObject.FindProperty("m_decelerationRate");
+        m_scrollSensitivity = serializedObject.FindProperty("m_scrollSensitivity");
+        m_useScrollbar = serializedObject.FindProperty("m_useScrollbar");
+        m_verticalScrollbar = serializedObject.FindProperty("m_verticalScrollbar");
+        m_horizontalScrollbar = serializedObject.FindProperty("m_horizontalScrollbar");
+        m_scrollbarVisibility = serializedObject.FindProperty("m_scrollbarVisibility");
 
         // Layout - Cell Alignment
         m_padding = serializedObject.FindProperty("m_padding");
@@ -141,7 +168,7 @@ public class RecycleScrollerEditor : Editor
 
         EditorGUILayout.Space(2f);
 
-        DrawScrollSection();
+        DrawScrollSection(scroller);
         EditorGUILayout.Space(4f);
 
         DrawLayoutSection(scroller);
@@ -151,6 +178,9 @@ public class RecycleScrollerEditor : Editor
         EditorGUILayout.Space(4f);
 
         DrawAdvancedSection();
+        EditorGUILayout.Space(4f);
+
+        EditorGUILayout.PropertyField(m_onValueChanged);
 
         serializedObject.ApplyModifiedProperties();
 
@@ -163,7 +193,7 @@ public class RecycleScrollerEditor : Editor
 
     #region Draw - Scroll
 
-    private void DrawScrollSection()
+    private void DrawScrollSection(RecycleScroller scroller)
     {
         EditorDrawerHelper.DrawBigCategory(ref m_foldoutScroll, "[Scroll]", BIG_TITLE_COLOR_SCROLL,
             EditorDrawerHelper.BigBoxColorA, "스크롤 축 및 스크롤바 설정", () =>
@@ -176,16 +206,41 @@ public class RecycleScrollerEditor : Editor
                 EditorGUI.EndDisabledGroup();
             });
 
-            EditorDrawerHelper.DrawSmallCategory(ref m_foldoutScrollbar, "[Scrollbar]",
+            EditorDrawerHelper.DrawSmallCategory(ref m_foldoutScrollRectSettings, "[ScrollRect Settings]",
                 EditorDrawerHelper.SMALL_TITLE_COLOR_B, EditorDrawerHelper.SmallBoxColorB, () =>
             {
                 EditorGUI.BeginDisabledGroup(IsAppPlaying);
-                EditorGUILayout.PropertyField(m_scrollbarRef, new GUIContent("Recycle Scrollbar"));
-                EditorDrawerHelper.DrawCustomHelpBox(
-                    "Recycle Scrollbar: 주축(셀 재활용 방향) 전용 스크롤바\n"
-                    + "보조축(그룹 내 셀 배치 방향) 스크롤이 필요한 경우 ScrollRect의 기본 Scrollbar를 사용하세요",
-                    MessageType.Info, Color.white);
+                EditorGUILayout.PropertyField(m_viewport, new GUIContent("Viewport"));
+                EditorGUILayout.PropertyField(m_content, new GUIContent("Content"));
                 EditorGUI.EndDisabledGroup();
+
+                EditorGUILayout.PropertyField(m_movementType, new GUIContent("Movement Type"));
+                DrawOverwriteLabel(scroller.Debug_IsMovementTypeOverwritten, scroller.Debug_OverwrittenMovementType);
+                if (m_movementType.enumValueIndex == (int)UnityEngine.UI.ScrollRect.MovementType.Elastic)
+                    EditorGUILayout.PropertyField(m_elasticity);
+                EditorGUILayout.PropertyField(m_inertia);
+                if (m_inertia.boolValue)
+                    EditorGUILayout.PropertyField(m_decelerationRate, new GUIContent("Deceleration Rate"));
+                EditorGUILayout.PropertyField(m_scrollSensitivity, new GUIContent("Scroll Sensitivity"));
+            });
+
+            EditorDrawerHelper.DrawSmallCategory(ref m_foldoutScrollbar, "[Scrollbar]",
+                EditorDrawerHelper.SMALL_TITLE_COLOR_A, EditorDrawerHelper.SmallBoxColorA, () =>
+            {
+                EditorGUILayout.PropertyField(m_useScrollbar, new GUIContent("Use Scrollbar"));
+
+                if (m_useScrollbar.boolValue)
+                {
+                    EditorGUI.BeginDisabledGroup(IsAppPlaying);
+                    EditorGUILayout.PropertyField(m_verticalScrollbar, new GUIContent("Vertical Scrollbar"));
+                    EditorGUILayout.PropertyField(m_horizontalScrollbar, new GUIContent("Horizontal Scrollbar"));
+                    EditorGUILayout.PropertyField(m_scrollbarVisibility, new GUIContent("Visibility"));
+                    EditorDrawerHelper.DrawCustomHelpBox(
+                        "주축(셀 재활용 방향) RecycleScrollbar만 활성화됩니다.\n"
+                        + "반대축 스크롤바는 자동으로 비활성화됩니다.",
+                        MessageType.Info, Color.white);
+                    EditorGUI.EndDisabledGroup();
+                }
             });
         });
     }
@@ -199,13 +254,13 @@ public class RecycleScrollerEditor : Editor
         EditorDrawerHelper.DrawBigCategory(ref m_foldoutLayout, "[Layout]", BIG_TITLE_COLOR_LAYOUT,
             EditorDrawerHelper.BigBoxColorB, "셀 정렬, 그룹 배치 및 콘텐트 크기 설정", () =>
         {
-            DrawCellAlignmentSubSection();
+            DrawCellAlignmentSubSection(scroller);
             DrawCellGroupSubSection(scroller);
             DrawContentFitSubSection();
         });
     }
 
-    private void DrawCellAlignmentSubSection()
+    private void DrawCellAlignmentSubSection(RecycleScroller scroller)
     {
         EditorDrawerHelper.DrawSmallCategory(ref m_foldoutCellAlignment, "[Cell Alignment]",
             EditorDrawerHelper.SMALL_TITLE_COLOR_A, EditorDrawerHelper.SmallBoxColorA, () =>
@@ -214,6 +269,7 @@ public class RecycleScrollerEditor : Editor
             EditorGUILayout.PropertyField(m_padding, new GUIContent("Layout Padding"));
             EditorGUILayout.PropertyField(m_spacing);
             EditorGUILayout.PropertyField(m_childAlignment);
+            DrawOverwriteLabel(scroller.Debug_IsChildAlignmentOverwritten, scroller.Debug_OverwrittenChildAlignment);
             EditorGUILayout.PropertyField(m_reverse);
             EditorGUILayout.PropertyField(m_controlChildSize);
             EditorGUILayout.PropertyField(m_useChildScale);
@@ -363,6 +419,41 @@ public class RecycleScrollerEditor : Editor
         EditorGUI.EndDisabledGroup();
 
         Repaint();
+    }
+
+    #endregion
+
+    #region Draw - Overwrite Label
+
+    private static GUIStyle s_overwriteLabelStyle;
+
+    private static GUIStyle OverwriteLabelStyle
+    {
+        get
+        {
+            if (s_overwriteLabelStyle == null)
+            {
+                s_overwriteLabelStyle = new GUIStyle(EditorStyles.miniLabel)
+                {
+                    normal = { textColor = new Color(0.6f, 0.6f, 0.6f) },
+                    fontSize = 10,
+                    padding = new RectOffset(0, 0, 0, 0),
+                    margin = new RectOffset(0, 0, -2, 2),
+                };
+            }
+            return s_overwriteLabelStyle;
+        }
+    }
+
+    private static void DrawOverwriteLabel<T>(bool isOverwritten, T overwrittenValue)
+    {
+        if (isOverwritten == false || Application.isPlaying == false) return;
+
+        var indent = EditorGUI.indentLevel * 15f;
+        var rect = EditorGUILayout.GetControlRect(false, 14f);
+        rect.x += indent + 16f;
+        rect.width -= indent + 16f;
+        EditorGUI.LabelField(rect, $"\u21b3 Overwritten: {overwrittenValue}", OverwriteLabelStyle);
     }
 
     #endregion

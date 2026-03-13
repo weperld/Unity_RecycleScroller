@@ -8,15 +8,22 @@ namespace RecycleScroll
 #if UNITY_EDITOR
         [SerializeField] private GameObject[] m_exampleLayoutGroups;
 
-        private void OnValidate()
+        protected override void OnValidate()
         {
+            SetDirtyCaching();
             if (Application.isPlaying) return;
 
+            if (Content == null || Viewport == null) return;
+
             UpdateScrollAxisToScrollRect();
+            if (m_loopScroll)
+                m_overwriteMovementType.Overwrite(ScrollRect.MovementType.Unrestricted);
+            else
+                m_overwriteMovementType.RemoveOverwrite();
             if (m_fitContentToViewport)
                 Content.sizeDelta = ScrollAxis == eScrollAxis.VERTICAL
-                    ? new Vector2(Viewport.rect.width, ViewportSize)
-                    : new Vector2(ViewportSize, Viewport.rect.height);
+                    ? new Vector2(0f, ViewportSize)
+                    : new Vector2(ViewportSize, 0f);
             UnityEditor.EditorApplication.delayCall += DelayedCall_ForOnValidate;
         }
 
@@ -30,6 +37,7 @@ namespace RecycleScroll
             SetAlignmentValuesToContentLayout();
             CheckLayoutGroupOfExampleLayoutGroup();
             UpdateScrollbarSizeFromRect();
+            HideCrossAxisScrollbar();
         }
 
         private void CheckLayoutGroupOfExampleLayoutGroup()
@@ -113,6 +121,11 @@ namespace RecycleScroll
 
         private void Start()
         {
+            if (m_loopScroll)
+                m_overwriteMovementType.Overwrite(ScrollRect.MovementType.Unrestricted);
+            else
+                m_overwriteMovementType.RemoveOverwrite();
+
             UpdateScrollbarSizeFromRect();
         }
 
@@ -122,7 +135,8 @@ namespace RecycleScroll
         /// </summary>
         private void UpdateScrollbarSizeFromRect()
         {
-            if (m_scrollbarRef == null) return;
+            var scrollbar = MainAxisScrollbar;
+            if (scrollbar == null) return;
 
             float viewportSize = ViewportSize;
             float contentSize = ScrollAxis == eScrollAxis.VERTICAL
@@ -130,7 +144,7 @@ namespace RecycleScroll
                 : Content.rect.width;
 
             float size = contentSize > 0f ? Mathf.Clamp01(viewportSize / contentSize) : 1f;
-            m_scrollbarRef.Size = size;
+            scrollbar.Size = size;
         }
     }
 }
