@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-03-13
+
+### Fixed
+- `RecycleScroller.Runtime.asmdef`에 `Unity.ugui` 어셈블리 참조 추가 — 외부 프로젝트에서 MonoScript 타입 매핑 실패로 컴포넌트가 missing script로 표시되는 문제 수정
+
 ## [1.3.0] - 2026-03-13
 
 ### Breaking Changes
