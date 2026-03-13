@@ -11,7 +11,6 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
 {
     [Header("Required References")]
     [SerializeField] private RecycleScroller m_scroller;
-    [SerializeField] private RecycleScrollbar m_scrollbar;
 
     [Header("Cell Settings")]
     [SerializeField] private int m_cellCount = 50;
@@ -36,6 +35,7 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
         }
 
         CreateCellPrefab();
+        RegisterOnValueChangedTest();
 
         m_scroller.del = this;
         var callbacks = m_scroller.LoadData();
@@ -107,6 +107,48 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
         text.fontSize = 24;
         text.color = Color.black;
         text.text = "Cell";
+    }
+
+    #endregion
+
+    #region 7-x: onValueChanged Event Test
+
+    [Header("Event Test")]
+    [SerializeField] private bool m_logOnValueChanged = true;
+
+    private const string EVT_TAG = "[RSTest:Event]";
+    private bool m_isDragging = false;
+    private int m_eventFireCount = 0;
+
+    private void RegisterOnValueChangedTest()
+    {
+        m_scroller.onValueChanged.AddListener(OnValueChangedCallback);
+        m_scroller.onBeginDrag += () => { m_isDragging = true; };
+        m_scroller.onEndDrag += () =>
+        {
+            Debug.Log($"{EVT_TAG} [7-1] 드래그 종료 — 드래그 중 이벤트 발생 횟수: {m_eventFireCount}");
+            m_isDragging = false;
+            m_eventFireCount = 0;
+        };
+        Debug.Log($"{EVT_TAG} [7-3] onValueChanged 리스너 등록 완료 (코드 AddListener)");
+    }
+
+    private void OnValueChangedCallback(Vector2 normalizedPos)
+    {
+        if (!m_logOnValueChanged) return;
+
+        m_eventFireCount++;
+
+        if (m_isDragging)
+        {
+            if (m_eventFireCount == 1)
+                Debug.Log($"{EVT_TAG} [7-1] 드래그 중 첫 이벤트 발생 — pos: {normalizedPos}");
+        }
+        else
+        {
+            if (m_eventFireCount <= 3)
+                Debug.Log($"{EVT_TAG} [7-2] 관성/물리 이벤트 #{m_eventFireCount} — pos: {normalizedPos}");
+        }
     }
 
     #endregion
@@ -203,17 +245,18 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
     [ContextMenu("Log Scrollbar State")]
     private void LogScrollbarState()
     {
-        if (m_scrollbar == null)
+        var scrollbar = m_scroller.Scrollbar;
+        if (scrollbar == null)
         {
             Debug.Log("[Scrollbar] 참조 없음");
             return;
         }
 
         Debug.Log("=== RecycleScrollbar Info ==="
-            + $"\n  value: {m_scrollbar.Value:F3}"
-            + $"\n  size: {m_scrollbar.Size:F3}"
-            + $"\n  direction: {m_scrollbar._Direction}"
-            + $"\n  Del assigned: {m_scrollbar.Del != null}");
+            + $"\n  value: {scrollbar.Value:F3}"
+            + $"\n  size: {scrollbar.Size:F3}"
+            + $"\n  direction: {scrollbar._Direction}"
+            + $"\n  Del assigned: {scrollbar.Del != null}");
     }
 
     [ContextMenu("Scroll To Start")]

@@ -93,7 +93,7 @@ public class ScrollPagingConfigDrawer : PropertyDrawer
         #region Draw Warning Label
         rect.y += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
         rect.height = m_warningLabelHeight;
-        EditorDrawerHelper.DrawCustomHelpBox(rect, "주의! 실행 시 ScrollRect의 Inertia가 꺼집니다. 이전 상태를 기억하지 않습니다!",
+        EditorDrawerHelper.DrawCustomHelpBox(rect, "주의! 실행 시 Inertia가 꺼집니다. 이전 상태를 기억하지 않습니다!",
             MessageType.Warning, warningColor);
         rect.height = EditorGUIUtility.singleLineHeight;
         rect.y += m_warningLabelHeight - EditorGUIUtility.singleLineHeight;

@@ -169,6 +169,9 @@ namespace RecycleScroll
         private bool m_isOverwritten = false;
         private T m_value;
 
+        public bool IsOverwritten => m_isOverwritten;
+        public T OverwrittenValue => m_value;
+
         public T GetValue(T originalValue)
         {
             return m_isOverwritten ? m_value : originalValue;

@@ -129,13 +129,6 @@ namespace RecycleScroll
             return m_scrollerMode.ConvertShowToReal(showValue, ShowingContentSize);
         }
 
-        private void SetDirty()
-        {
-            if (isActiveAndEnabled == false || Content == false) return;
-
-            LayoutRebuilder.MarkLayoutForRebuild(_RectTransform);
-        }
-
         #endregion
 
         #region Set Component Values
@@ -153,16 +146,16 @@ namespace RecycleScroll
 
         private void UpdateScrollAxisToScrollRect()
         {
-            _ScrollRect.horizontal = ScrollAxis == eScrollAxis.HORIZONTAL;
-            _ScrollRect.vertical = ScrollAxis == eScrollAxis.VERTICAL;
+            m_horizontal = ScrollAxis == eScrollAxis.HORIZONTAL;
+            m_vertical = ScrollAxis == eScrollAxis.VERTICAL;
         }
 
         private void ResetSpaceCellsWidth()
         {
             float width = ScrollAxis switch
             {
-                eScrollAxis.VERTICAL => Content.sizeDelta.x,
-                eScrollAxis.HORIZONTAL => Content.sizeDelta.y,
+                eScrollAxis.VERTICAL => Content.rect.width,
+                eScrollAxis.HORIZONTAL => Content.rect.height,
                 _ => 0f
             };
             var size = ScrollAxis switch
@@ -303,14 +296,23 @@ namespace RecycleScroll
             return new Vector2(x, y);
         }
 
-        public void ResetContent_Pivot()
+        private void ResetContent_Pivot()
         {
             Content.pivot = GetAlignmentPoint();
         }
 
-        public void ResetContent_Anchor()
+        private void ResetContent_Anchor()
         {
-            Content.anchorMin = Content.anchorMax = GetAlignmentPoint();
+            if (ScrollAxis == eScrollAxis.VERTICAL)
+            {
+                Content.anchorMin = new Vector2(0f, 1f);
+                Content.anchorMax = new Vector2(1f, 1f);
+            }
+            else
+            {
+                Content.anchorMin = new Vector2(0f, 0f);
+                Content.anchorMax = new Vector2(0f, 1f);
+            }
         }
 
         private void ResetContent_Size()
@@ -322,8 +324,8 @@ namespace RecycleScroll
                 : totalSize;
 
             Content.sizeDelta = ScrollAxis == eScrollAxis.VERTICAL
-                ? new Vector2(Viewport.rect.width, axisSize)
-                : new Vector2(axisSize, Viewport.rect.height);
+                ? new Vector2(0f, axisSize)
+                : new Vector2(axisSize, 0f);
         }
 
         private Type GetNeedLayoutGroupTypeOfGroupCell()
@@ -371,24 +373,25 @@ namespace RecycleScroll
 
         #endregion
 
-        #region Scroll Rect Listener
+        #region Scroll Position Changed
 
         /// <summary>
-        /// Scroll Rect OnValueChanged Listener;
+        /// 스크롤 위치 변경 시 호출되는 콜백.
+        /// LateUpdate에서 Content 위치 변화가 감지될 때 자동 호출됩니다.
         /// </summary>
-        /// <param name="val"></param>
-        public void OnScrollRectScrolling(Vector2 val)
+        private void OnScrollPositionChanged(Vector2 val)
         {
             if (m_scrollerMode.NeedReposition(RealScrollPosition, FrontThreshold, BackThreshold, RealScrollSize))
             {
-                var velocity = _ScrollRect.velocity;
+                var velocity = m_velocity;
                 ShowingScrollPosition = ShowingScrollPosition;
-                _ScrollRect.velocity = velocity;
+                m_velocity = velocity;
             }
 
             SetScrollbarValueWithoutNotify();
 
             UpdateCellView();
+            m_onValueChanged?.Invoke(val);
             onScroll?.Invoke(val);
 
             var currentPos = RealScrollPosition;
@@ -404,6 +407,9 @@ namespace RecycleScroll
             var nearestPageIndex = NearestPageIndexByScrollPos;
             if (m_prevPageIndexByScrollPos != nearestPageIndex) ChangeCurrentPageIndex(nearestPageIndex);
         }
+
+        [System.Obsolete("Use is no longer needed. Scroll position changes are handled internally via LateUpdate.")]
+        public void OnScrollRectScrolling(Vector2 val) => OnScrollPositionChanged(val);
 
         #endregion
 
@@ -873,22 +879,6 @@ namespace RecycleScroll
 
         #endregion
 
-        #region Drag Handlers
-
-        void IBeginDragHandler.OnBeginDrag(PointerEventData eventData)
-        {
-            StopAllMoveCor();
-            onBeginDrag?.Invoke();
-        }
-
-        void IEndDragHandler.OnEndDrag(PointerEventData eventData)
-        {
-            if (m_pagingData.usePaging) StartPagingCor();
-            onEndDrag?.Invoke();
-        }
-
-        #endregion
-
         #region Paging
 
         private void ChangeCurrentPageIndex(int current)
@@ -901,7 +891,7 @@ namespace RecycleScroll
 
         private void StartPagingCor()
         {
-            if (_ScrollRect.inertia) _ScrollRect.inertia = false;
+            if (m_inertia) m_inertia = false;
 
             var nearestPageIndex = FindRealClosestPageIndexFrom(PagePivotPosInScrollRect);
             if (nearestPageIndex == -1) return;
@@ -1109,25 +1099,6 @@ namespace RecycleScroll
             m_scrollerMode.ApplyScrollbarValue(normalizedValue,
                 v => ShowingNormalizedScrollPosition = v,
                 v => RealNormalizedScrollPosition = v);
-        }
-
-        /// <summary>
-        /// RecycleScrollbar가 더 이상 Scrollbar를 상속하지 않으므로,
-        /// ScrollRect의 scrollbar 바인딩을 해제하여 간섭을 방지합니다.
-        /// </summary>
-        private void NullifyScrollRectScrollbar()
-        {
-            switch (ScrollAxis)
-            {
-                case eScrollAxis.VERTICAL:
-                    if (_ScrollRect.verticalScrollbar != null)
-                        _ScrollRect.verticalScrollbar = null;
-                    break;
-                case eScrollAxis.HORIZONTAL:
-                    if (_ScrollRect.horizontalScrollbar != null)
-                        _ScrollRect.horizontalScrollbar = null;
-                    break;
-            }
         }
 
         private void OnBeginDragForScrollbar(PointerEventData _)

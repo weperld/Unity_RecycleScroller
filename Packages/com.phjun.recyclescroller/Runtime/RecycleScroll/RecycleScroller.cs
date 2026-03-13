@@ -9,31 +9,20 @@ using Cysharp.Threading.Tasks;
 
 namespace RecycleScroll
 {
-    [RequireComponent(typeof(ScrollRect))]
+    [ExecuteAlways]
+    [RequireComponent(typeof(RectTransform))]
     [DisallowMultipleComponent]
     [AddComponentMenu("UI/Recycle Scroll/Recycle Scroller")]
-    public partial class RecycleScroller : MonoBehaviour, IBeginDragHandler, IEndDragHandler, IRecycleScrollbarDelegate
+    public partial class RecycleScroller : UIBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler,
+        IInitializePotentialDragHandler, IScrollHandler, ICanvasElement, ILayoutElement, ILayoutGroup,
+        IRecycleScrollbarDelegate
     {
         #region Fields
 
         #region Scroll Rect
 
-        private ScrollRect m_scrollRect;
-
-        public ScrollRect _ScrollRect
-        {
-            get
-            {
-                if (m_scrollRect) return m_scrollRect;
-
-                if (!gameObject.TryGetComponent(out m_scrollRect))
-                    m_scrollRect = gameObject.AddComponent<ScrollRect>();
-                return m_scrollRect;
-            }
-        }
-
-        public RectTransform Viewport => _ScrollRect.viewport;
-        public RectTransform Content => _ScrollRect.content;
+        public RectTransform Viewport => m_viewport;
+        public RectTransform Content => m_content;
 
         public float ViewportSize
         {
@@ -61,6 +50,9 @@ namespace RecycleScroll
                 return m_rectSelf;
             }
         }
+
+        private readonly OverwriteValue<ScrollRect.MovementType> m_overwriteMovementType = new();
+        private ScrollRect.MovementType CurrentMovementType => m_overwriteMovementType.GetValue(m_movementType);
 
         #endregion
 
@@ -162,8 +154,8 @@ namespace RecycleScroll
         {
             get => ScrollAxis switch
             {
-                eScrollAxis.VERTICAL => 1f - _ScrollRect.verticalNormalizedPosition,
-                eScrollAxis.HORIZONTAL => _ScrollRect.horizontalNormalizedPosition,
+                eScrollAxis.VERTICAL => 1f - verticalNormalizedPosition,
+                eScrollAxis.HORIZONTAL => horizontalNormalizedPosition,
                 _ => 0f,
             };
             set
@@ -178,10 +170,10 @@ namespace RecycleScroll
                 switch (ScrollAxis)
                 {
                     case eScrollAxis.VERTICAL:
-                        _ScrollRect.verticalNormalizedPosition = 1f - setValue;
+                        verticalNormalizedPosition = 1f - setValue;
                         break;
                     case eScrollAxis.HORIZONTAL:
-                        _ScrollRect.horizontalNormalizedPosition = setValue;
+                        horizontalNormalizedPosition = setValue;
                         break;
                     default:
                         Debug.LogError("Not Support Scroll Axis Value");
@@ -221,24 +213,23 @@ namespace RecycleScroll
         #region Scroll Bar
 
         private RecycleScrollbar m_scrollbar = null;
-        private RecycleScrollbar Scrollbar
+        public RecycleScrollbar Scrollbar
         {
             get
             {
                 if (m_scrollbar)
                 {
-                    if (m_scrollbar == m_scrollbarRef) return m_scrollbar;
+                    if (m_scrollbar == MainAxisScrollbar) return m_scrollbar;
                     RemoveDragEventAtScrollbar(m_scrollbar);
                     m_scrollbar.OnValueChanged.RemoveListener(OnScrollbarValueChanged);
                 }
 
-                m_scrollbar = m_scrollbarRef;
+                m_scrollbar = MainAxisScrollbar;
                 if (m_scrollbar)
                 {
                     m_scrollbar.Del = this;
                     AddDragEventToScrollbar(m_scrollbar);
                     m_scrollbar.OnValueChanged.AddListener(OnScrollbarValueChanged);
-                    NullifyScrollRectScrollbar();
                 }
 
                 return m_scrollbar;
@@ -415,17 +406,12 @@ namespace RecycleScroll
             }
         }
         public LoadDataProceedState Debug_LoadDataState => m_loadDataProceedState;
+
+        public bool Debug_IsMovementTypeOverwritten => m_overwriteMovementType.IsOverwritten;
+        public UnityEngine.UI.ScrollRect.MovementType Debug_OverwrittenMovementType => m_overwriteMovementType.OverwrittenValue;
+        public bool Debug_IsChildAlignmentOverwritten => m_overwriteChildAlignment.IsOverwritten;
+        public TextAnchor Debug_OverwrittenChildAlignment => m_overwriteChildAlignment.OverwrittenValue;
 #endif
 
-        #region Unity Default Events
-
-        private void OnDisable()
-        {
-            StopAllMoveCor();
-            StopAllPreviousLoadDataTask();
-            StopCorWaitLoadDataStateToCompleteForBuffer();
-        }
-
-        #endregion
     }
 }
