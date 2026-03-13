@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+- `[RequireComponent(typeof(ScrollRect))]` 제거 — ScrollRect 컴포넌트 의존성 완전 제거
+- `RecycleScrollerContentEditor.cs` 삭제 — Content RectTransform 커스텀 에디터를 `DrivenRectTransformTracker`로 대체
+- `_ScrollRect` 프로퍼티 삭제 — ScrollRect 직접 접근 불가
+- Content 앵커 방식 변경: 단일 점 앵커 → 스트레치 앵커 (Vertical: 상단 가로 스트레치, Horizontal: 좌측 세로 스트레치)
+- 프리팹의 Viewport/Content 참조 재할당 필요 (ScrollRect에서 RecycleScroller로 이전)
+
+### Added
+- ScrollRect 소스 코드 포크 (`RecycleScroller_ScrollRect.cs`) — 드래그/관성/탄성/Bounds/normalizedPosition/Canvas/Layout 시스템 내장
+- `UIBehaviour` 상속 — `OnRectTransformDimensionsChange`, `IsActive()` 등 UI 라이프사이클 지원
+- `ICanvasElement`, `ILayoutElement`, `ILayoutGroup` 인터페이스 구현
+- `IDragHandler`, `IInitializePotentialDragHandler`, `IScrollHandler` 인터페이스 추가
+- `[ExecuteAlways]` 어트리뷰트 — 에디트 모드 레이아웃 리빌드 지원
+- `onValueChanged` 이벤트 (`ScrollerEvent : UnityEvent<Vector2>`) — normalizedPosition 콜백
+- `m_useScrollbar` 토글 — 스크롤바 사용/미사용 전환 (플레이 중 변경 가능)
+- 듀얼 스크롤바 필드 (`m_verticalScrollbar`, `m_horizontalScrollbar`) 및 `MainAxisScrollbar`/`CrossAxisScrollbar` 프로퍼티
+- `ScrollbarVisibility` 3모드 지원 (Permanent / AutoHide / AutoHideAndExpandViewport)
+- `DrivenRectTransformTracker`로 Viewport, Scrollbar, Content의 RectTransform 점유 ("Some values driven by RecycleScroller." 표시)
+- `OverwriteValue<MovementType>` — 루프 스크롤 시 MovementType 강제 Unrestricted
+- ScrollRect Settings 필드 플레이 중 편집 가능 (MovementType, Elasticity, Inertia, DecelerationRate, ScrollSensitivity)
+- 에디트 모드 스크롤바 크기/가시성 실시간 갱신
+
+### Fixed
+- `CollectionUtils.FindClosestIndex` 빈 컬렉션 접근 시 `InvalidOperationException` 방지 (`First()` → `FirstOrDefault()`)
+
+### Changed
+- `MonoBehaviour` → `UIBehaviour` 상속 변경
+- `m_scrollbarRef` → `m_verticalScrollbar` (`[FormerlySerializedAs]` 적용)
+- `OnScrollRectScrolling` → `OnScrollPositionChanged` 리네이밍 (`[Obsolete]` 포워딩 유지)
+- `ResetContent_Pivot()`, `ResetContent_Anchor()` 접근 제한자 `public` → `private`
+- `ResetContent_Size()` 보조축 sizeDelta: Viewport.rect 값 → 0 (스트레치 앵커가 자동 처리)
+- `ResetSpaceCellsWidth()`: `Content.sizeDelta` → `Content.rect` (스트레치 모드 대응)
+- `ScrollPagingConfigDrawer` HelpBox 텍스트에서 "ScrollRect의" 참조 제거
+
 ## [1.2.3] - 2026-03-11
 
 ### Fixed
