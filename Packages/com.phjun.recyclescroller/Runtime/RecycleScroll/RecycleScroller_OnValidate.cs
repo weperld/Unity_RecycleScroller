@@ -119,8 +119,10 @@ namespace RecycleScroll
 
 #endif
 
-        private void Start()
+        protected override void Start()
         {
+            base.Start();
+
             if (m_loopScroll)
                 m_overwriteMovementType.Overwrite(ScrollRect.MovementType.Unrestricted);
             else
