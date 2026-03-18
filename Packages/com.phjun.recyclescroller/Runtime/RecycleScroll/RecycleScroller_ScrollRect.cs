@@ -608,16 +608,19 @@ namespace RecycleScroll
             m_tracker.Clear();
             UpdateCachedData();
 
-            // Viewport RectTransform을 항상 점유: Anchors(0,0~1,1), Position(0,0), SizeDelta(0,0)
-            m_tracker.Add(this, viewRect,
-                DrivenTransformProperties.Anchors |
-                DrivenTransformProperties.SizeDelta |
-                DrivenTransformProperties.AnchoredPosition);
+            // Viewport RectTransform 점유: 스크롤바 AutoHideAndExpandViewport일 때만
+            if (m_hSliderExpand || m_vSliderExpand)
+            {
+                m_tracker.Add(this, viewRect,
+                    DrivenTransformProperties.Anchors |
+                    DrivenTransformProperties.SizeDelta |
+                    DrivenTransformProperties.AnchoredPosition);
 
-            viewRect.anchorMin = Vector2.zero;
-            viewRect.anchorMax = Vector2.one;
-            viewRect.sizeDelta = Vector2.zero;
-            viewRect.anchoredPosition = Vector2.zero;
+                viewRect.anchorMin = Vector2.zero;
+                viewRect.anchorMax = Vector2.one;
+                viewRect.sizeDelta = Vector2.zero;
+                viewRect.anchoredPosition = Vector2.zero;
+            }
 
             // Content RectTransform 점유
             // Pivot, Anchors, 보조축 SizeDelta: 항상 점유
@@ -684,18 +687,15 @@ namespace RecycleScroll
             m_viewBounds = new Bounds(viewRect.rect.center, viewRect.rect.size);
             m_contentBounds = GetBounds();
 
-            // 스크롤바가 존재하면 viewport를 스크롤바 크기만큼 축소
-            // Permanent: 항상 축소, AutoHide/AutoHideAndExpand: 스크롤 필요 시 축소
-            bool isPermanent = m_scrollbarVisibility == ScrollRect.ScrollbarVisibility.Permanent;
-
-            if (m_vSliderExpand && (isPermanent || vScrollingNeeded))
+            // Viewport를 스크롤바 크기만큼 축소 (AutoHideAndExpandViewport: 스크롤 필요 시)
+            if (m_vSliderExpand && vScrollingNeeded)
             {
                 viewRect.sizeDelta = new Vector2(-m_vSliderWidth, viewRect.sizeDelta.y);
                 m_viewBounds = new Bounds(viewRect.rect.center, viewRect.rect.size);
                 m_contentBounds = GetBounds();
             }
 
-            if (m_hSliderExpand && (isPermanent || hScrollingNeeded))
+            if (m_hSliderExpand && hScrollingNeeded)
             {
                 viewRect.sizeDelta = new Vector2(viewRect.sizeDelta.x, -m_hSliderHeight);
                 m_viewBounds = new Bounds(viewRect.rect.center, viewRect.rect.size);
@@ -703,7 +703,7 @@ namespace RecycleScroll
             }
 
             // 수평 스크롤바가 추가된 후 수직 스크롤바가 다시 필요해졌는지 재확인
-            if (m_vSliderExpand && (isPermanent || vScrollingNeeded) && viewRect.sizeDelta.x == 0 && viewRect.sizeDelta.y < 0)
+            if (m_vSliderExpand && vScrollingNeeded && viewRect.sizeDelta.x == 0 && viewRect.sizeDelta.y < 0)
             {
                 viewRect.sizeDelta = new Vector2(-m_vSliderWidth, viewRect.sizeDelta.y);
             }
@@ -731,21 +731,25 @@ namespace RecycleScroll
             bool scrollbarIsChild = (!m_mainAxisScrollbarRect || m_mainAxisScrollbarRect.parent == transform);
             bool allAreChildren = viewIsChild && scrollbarIsChild;
 
-            bool hasScrollbar = m_useScrollbar && allAreChildren && m_mainAxisScrollbarRect;
-            bool shouldExpand = hasScrollbar
-                && m_scrollbarVisibility != ScrollRect.ScrollbarVisibility.AutoHide;
+            // 주축 스크롤바: 1)참조 존재 2)사용 가능 3)AutoHideAndExpandViewport
+            bool mainAxisHasScrollbar = m_useScrollbar && allAreChildren && m_mainAxisScrollbarRect;
+            bool mainAxisShouldExpand = mainAxisHasScrollbar
+                && m_scrollbarVisibility == ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport;
+
+            // 보조축 스크롤바: 시스템이 비활성화(HideCrossAxisScrollbar)하므로 사용 불가 → expand 불필요
+            bool crossAxisShouldExpand = false;
 
             if (ScrollAxis == eScrollAxis.VERTICAL)
             {
-                m_vSliderExpand = shouldExpand;
-                m_hSliderExpand = false;
+                m_vSliderExpand = mainAxisShouldExpand;
+                m_hSliderExpand = crossAxisShouldExpand;
                 m_vSliderWidth = m_mainAxisScrollbarRect != null ? m_mainAxisScrollbarRect.rect.width : 0;
                 m_hSliderHeight = 0;
             }
             else
             {
-                m_hSliderExpand = shouldExpand;
-                m_vSliderExpand = false;
+                m_hSliderExpand = mainAxisShouldExpand;
+                m_vSliderExpand = crossAxisShouldExpand;
                 m_hSliderHeight = m_mainAxisScrollbarRect != null ? m_mainAxisScrollbarRect.rect.height : 0;
                 m_vSliderWidth = 0;
             }

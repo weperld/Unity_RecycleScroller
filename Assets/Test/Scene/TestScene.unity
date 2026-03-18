@@ -157,7 +157,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0.00005890995, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_SizeDelta: {x: 1000, y: 0}
   m_Pivot: {x: 0, y: 0}
 --- !u!114 &161206448
 MonoBehaviour:
@@ -897,7 +897,7 @@ MonoBehaviour:
   m_useScrollbar: 1
   m_verticalScrollbar: {fileID: 308295867}
   m_horizontalScrollbar: {fileID: 538615554}
-  m_scrollbarVisibility: 1
+  m_scrollbarVisibility: 2
   m_fitContentToViewport: 1
   m_fixedCellCountInGroup: 1
   m_fixedCellCount: 1
