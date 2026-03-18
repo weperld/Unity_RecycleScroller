@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-03-18
+
+### Changed
+- Viewport RectTransform 점유 조건을 Unity ScrollRect와 동일하게 변경 — `AutoHideAndExpandViewport`일 때만 점유
+- Expand 조건 `!= AutoHide` → `== AutoHideAndExpandViewport`로 변경
+- 보조축 스크롤바 expand 판정 명시적 분리 (시스템 비활성화 고려)
+- Permanent 모드에서 Viewport 자동 축소 제거 (Unity ScrollRect 동일 동작)
+
+### Documentation
+- `.reference/NEXT_TASKS.md` 작업 목록 재구성 및 상세 문서 분리
+
 ## [1.4.0] - 2026-03-14
 
 ### Fixed
