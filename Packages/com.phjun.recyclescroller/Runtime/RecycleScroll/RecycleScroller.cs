@@ -324,7 +324,12 @@ namespace RecycleScroll
         #region Interface
 
         // 스크롤러 델리게이트
-        public IRecycleScrollerDelegate del;
+        private IRecycleScrollerDelegate m_del;
+        public IRecycleScrollerDelegate del
+        {
+            get => m_del;
+            set => m_del = value;
+        }
 
         #endregion
 
