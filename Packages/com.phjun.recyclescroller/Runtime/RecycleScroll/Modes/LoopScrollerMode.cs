@@ -39,6 +39,8 @@ namespace RecycleScroll
 
         public float ConvertRealToShow(float realValue, float showingContentSize)
         {
+            if (showingContentSize <= 0f) return 0f;
+
             var pos = realValue - AddingFrontContentSize;
             pos %= showingContentSize;
             if (pos < 0f) pos += showingContentSize;
@@ -47,6 +49,8 @@ namespace RecycleScroll
 
         public float ConvertShowToReal(float showValue, float showingContentSize)
         {
+            if (showingContentSize <= 0f) return 0f;
+
             var val = showValue % showingContentSize;
             if (val < 0f) val += showingContentSize;
             return val + AddingFrontContentSize;
