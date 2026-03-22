@@ -40,15 +40,10 @@ public static class CollectionUtils
     
     public static List<T> GetSafeRange<T>(this List<T> list, int index, int count)
     {
-        try
-        {
-            // GetRange 호출, 유효하지 않은 경우 예외 발생
-            return list.GetRange(index, count);
-        }
-        catch (ArgumentOutOfRangeException)
-        {
-            // 예외 발생 시 빈 리스트 반환
+        if (list == null || index < 0 || index >= list.Count || count <= 0)
             return new List<T>();
-        }
+
+        count = Math.Min(count, list.Count - index);
+        return list.GetRange(index, count);
     }
 }
