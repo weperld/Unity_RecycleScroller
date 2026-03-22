@@ -44,6 +44,8 @@ namespace RecycleScroll
 
         public float ConvertShowToReal(float showValue, float showingContentSize)
         {
+            if (showingContentSize <= 0f) return 0f;
+
             // 원본 코드와 동일: 항상 AdjustShowingPosValue 적용
             // 비루프에서 addingFront=0이므로 modulo만 수행
             var val = showValue % showingContentSize;
