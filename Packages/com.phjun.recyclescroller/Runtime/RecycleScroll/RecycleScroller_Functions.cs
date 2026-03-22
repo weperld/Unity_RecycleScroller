@@ -961,7 +961,7 @@ namespace RecycleScroll
             if (insertCount <= 0) return;
 
             // 삽입할 인덱스가 총 셀 수를 넘지 않도록 제한
-            insertIndex = Mathf.Clamp(insertIndex, 0, m_cellCount - 1);
+            insertIndex = Mathf.Clamp(insertIndex, 0, m_cellCount);
             var prevCellCount = m_cellCount;
             m_cellCount += insertCount;
 
@@ -975,7 +975,7 @@ namespace RecycleScroll
             RecalculateForInsert(insertIndex, prevCellCount);
         }
         public void AddToStart(int insertCount = 1) => Insert(0, insertCount);
-        public void AddToEnd(int addCount = 1) => Insert(m_cellCount - 1, addCount);
+        public void AddToEnd(int addCount = 1) => Insert(m_cellCount, addCount);
 
         public void Remove(int removeIndex, int removeCount = 1)
         {
