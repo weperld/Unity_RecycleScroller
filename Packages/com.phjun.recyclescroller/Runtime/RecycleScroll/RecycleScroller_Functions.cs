@@ -803,9 +803,9 @@ namespace RecycleScroll
         }
 
         private int NextRealPageIndex
-            => GetNextPageIndex(FindRealClosestPageIndexFrom(PagePivotPosInScrollRect), LoopScrollIsOn, RealPageCount);
+            => GetNextPageIndex(FindRealClosestPageIndexFrom(PagePivotPosInScrollRect), IsLoopScrollable, RealPageCount);
         private int PrevRealPageIndex
-            => GetPrevPageIndex(FindRealClosestPageIndexFrom(PagePivotPosInScrollRect), LoopScrollIsOn, RealPageCount);
+            => GetPrevPageIndex(FindRealClosestPageIndexFrom(PagePivotPosInScrollRect), IsLoopScrollable, RealPageCount);
 
         public void MoveToPage(int pageIndex)
         {
