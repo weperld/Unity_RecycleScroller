@@ -309,6 +309,13 @@ namespace RecycleScroll
         private float m_maxGroupWidth = 0f;
         private int m_cellCount = 0;
 
+        // UpdateCellView 분기 캐싱 (LoadData 시 설정)
+        private Vector2 m_cachedAxisVec;
+        private Vector2 m_cachedWidthMaskVec;
+        private Vector2 m_cachedContentPosVec;
+        private RectTransform m_cachedTopSpaceCell;
+        private RectTransform m_cachedBottomSpaceCell;
+
         public int GroupCount => m_list_groupData.Count;
         public int CellCount => m_cellCount;
 

@@ -108,9 +108,19 @@ namespace RecycleScroll
             ResetAllCellsAndGroups();
         }
 
+        private void CacheUpdateCellViewValues()
+        {
+            m_cachedAxisVec = ScrollAxis == eScrollAxis.VERTICAL ? Vector2.up : Vector2.right;
+            m_cachedWidthMaskVec = ScrollAxis == eScrollAxis.VERTICAL ? new Vector2(1f, 0f) : new Vector2(0f, 1f);
+            m_cachedContentPosVec = ScrollAxis == eScrollAxis.VERTICAL ? Vector2.up : Vector2.left;
+            m_cachedTopSpaceCell = Rt_TopSpaceCell;
+            m_cachedBottomSpaceCell = Rt_BottomSpaceCell;
+        }
+
         private void UpdateObjectsOnLoadData(LoadParam[] _params)
         {
             ExecuteLoadParam<LoadParam_ScrollPosSetter>(_params, () => ShowingNormalizedScrollPosition = 0f);
+            CacheUpdateCellViewValues();
             UpdateCellView();
             SetScrollbarSize();
         }
@@ -585,17 +595,12 @@ namespace RecycleScroll
         {
             if (del == null) return;
 
-            // 스크롤 영역 사이즈, 현재 스크롤 위치, 뷰포트 사이즈, 각 그룹의 크기를 이용해 현재 영역에 보여야 할 그룹 세팅
-            // 1. 스크롤 영역 기준 뷰포트의 가장 자리 위치 계산
-            // 2. 각 그룹을 돌며 뷰포트에 어떤 그룹이 걸쳐져 있는지 확인
-            // 3. 양 끝에 걸친 그룹의 인덱스를 이용해 보여야 하는 그룹들을 세팅
-
             #region 1. Calculate Boundary Position
             int groupCount = m_list_groupData.Count;
             if (groupCount == 0) return;
 
             var contentPos = Content.anchoredPosition;
-            var topBoundaryPos = Mathf.Clamp(ScrollAxis == eScrollAxis.VERTICAL ? contentPos.y : -contentPos.x, 0f, RealScrollSize);
+            var topBoundaryPos = Mathf.Clamp(Vector2.Dot(contentPos, m_cachedContentPosVec), 0f, RealScrollSize);
             var bottomBoundaryPos = Mathf.Clamp(topBoundaryPos + ViewportSize, ViewportSize, RealContentSize);
             #endregion
 
@@ -604,6 +609,15 @@ namespace RecycleScroll
             var firstGroupViewIndex = findVisibleGroupIndices.firstIndex;
             var lastGroupViewIndex = findVisibleGroupIndices.lastIndex;
             if (firstGroupViewIndex == -1 || lastGroupViewIndex == -1) return;
+
+            // m_reverse 기반 값 1회 계산
+            var topBoundaryGroupIndex = m_reverse ? groupCount - 1 : 0;
+            var bottomBoundaryGroupIndex = m_reverse ? 0 : groupCount - 1;
+            var pushKeepLow = m_reverse ? lastGroupViewIndex : firstGroupViewIndex;
+            var pushKeepHigh = m_reverse ? firstGroupViewIndex : lastGroupViewIndex;
+            int setStartIndex = m_reverse ? firstGroupViewIndex : lastGroupViewIndex;
+            int setLastIndex = m_reverse ? lastGroupViewIndex : firstGroupViewIndex;
+            bool reverseCellSort = m_reverse;
 
             // Calculate space sizes
             var topSpaceGroupSize = firstGroupViewIndex == 0
@@ -616,22 +630,12 @@ namespace RecycleScroll
 
             #region 3. Set Showing Groups
             #region Set Space Cells
-            var axisVec = ScrollAxis == eScrollAxis.VERTICAL ? Vector2.up : Vector2.right;
-            var widthVec = Viewport.rect.size;
-            switch (ScrollAxis)
-            {
-                case eScrollAxis.VERTICAL:
-                    widthVec.y = 0;
-                    break;
-                case eScrollAxis.HORIZONTAL:
-                    widthVec.x = 0;
-                    break;
-            }
+            var widthVec = Vector2.Scale(Viewport.rect.size, m_cachedWidthMaskVec);
 
-            Rt_TopSpaceCell.gameObject.SetActive(firstGroupViewIndex != (m_reverse ? groupCount - 1 : 0));
-            Rt_TopSpaceCell.sizeDelta = axisVec * topSpaceGroupSize + widthVec;
-            Rt_BottomSpaceCell.gameObject.SetActive(lastGroupViewIndex != (m_reverse ? 0 : groupCount - 1));
-            Rt_BottomSpaceCell.sizeDelta = axisVec * bottomSpaceGroupSize + widthVec;
+            m_cachedTopSpaceCell.gameObject.SetActive(firstGroupViewIndex != topBoundaryGroupIndex);
+            m_cachedTopSpaceCell.sizeDelta = m_cachedAxisVec * topSpaceGroupSize + widthVec;
+            m_cachedBottomSpaceCell.gameObject.SetActive(lastGroupViewIndex != bottomBoundaryGroupIndex);
+            m_cachedBottomSpaceCell.sizeDelta = m_cachedAxisVec * bottomSpaceGroupSize + widthVec;
             #endregion
 
             #region Push Cells and Groups
@@ -639,9 +643,7 @@ namespace RecycleScroll
             m_pushGroupIndexList.Clear();
             foreach (var groupIndex in m_dict_activatedGroups.Keys)
             {
-                if (m_reverse
-                    ? (lastGroupViewIndex <= groupIndex && groupIndex <= firstGroupViewIndex)
-                    : (firstGroupViewIndex <= groupIndex && groupIndex <= lastGroupViewIndex))
+                if (pushKeepLow <= groupIndex && groupIndex <= pushKeepHigh)
                     continue;
 
                 m_pushGroupIndexList.Add(groupIndex);
@@ -667,12 +669,8 @@ namespace RecycleScroll
             #endregion
 
             #region Set Cells
-            int setStartIndex = m_reverse ? firstGroupViewIndex : lastGroupViewIndex;
-            int setLastIndex = m_reverse ? lastGroupViewIndex : firstGroupViewIndex;
             int totalCellViewCount = 0;
-            int rangeStart = m_reverse ? setStartIndex : setLastIndex;
-            int rangeEnd = m_reverse ? setLastIndex : setStartIndex;
-            for (int idx = rangeStart; idx <= rangeEnd; idx++)
+            for (int idx = firstGroupViewIndex; idx <= lastGroupViewIndex; idx++)
                 totalCellViewCount += m_list_groupData[idx].cellCount;
             int lastCellViewIndex = totalCellViewCount - 1;
 
@@ -688,8 +686,8 @@ namespace RecycleScroll
                 var groupData = m_list_groupData[i];
                 var cellStartIndex = groupData.startDataIndex;
                 var cellLastIndex = groupData.endDataIndex;
-                var sortedStartIndex = m_reverse ? cellLastIndex : cellStartIndex;
-                var sortedLastIndex = m_reverse ? cellStartIndex : cellLastIndex;
+                var sortedStartIndex = reverseCellSort ? cellLastIndex : cellStartIndex;
+                var sortedLastIndex = reverseCellSort ? cellStartIndex : cellLastIndex;
                 var cellIsNothing = groupData.cellCount == 0;
 
                 // 존재했던 그룹이 아니라면 그룹 오브젝트 설정
