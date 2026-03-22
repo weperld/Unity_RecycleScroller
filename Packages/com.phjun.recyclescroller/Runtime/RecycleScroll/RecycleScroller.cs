@@ -187,7 +187,7 @@ namespace RecycleScroll
         public float RealScrollPosition
         {
             get => RealNormalizedScrollPosition * RealScrollSize;
-            set => RealNormalizedScrollPosition = value / RealScrollSize;
+            set => RealNormalizedScrollPosition = RealScrollSize > 0f ? value / RealScrollSize : 0f;
         }
 
         /// <summary>
