@@ -82,7 +82,7 @@ namespace RecycleScroll
                     else UnityEditor.Undo.DestroyObjectImmediate(layoutGroup);
                 }
 
-                layoutGroup = (HorizontalOrVerticalLayoutGroup)layoutGroupObj.AddComponent(needType);
+                layoutGroup = layoutGroupObj.AddComponent(needType) as HorizontalOrVerticalLayoutGroup;
                 SetLayoutGroupFieldOfCellGroup(layoutGroup);
 
                 #endregion
