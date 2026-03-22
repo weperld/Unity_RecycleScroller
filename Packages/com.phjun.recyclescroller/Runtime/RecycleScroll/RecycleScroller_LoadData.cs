@@ -11,6 +11,9 @@ namespace RecycleScroll
 {
     public partial class RecycleScroller
     {
+        private readonly List<int> m_pushCellIndexList = new();
+        private readonly List<int> m_pushGroupIndexList = new();
+
         private LoadDataExtensionComponent[] m_loadDataExtension;
         private LoadDataExtensionComponent[] LoadDataExtension
         {
@@ -374,12 +377,13 @@ namespace RecycleScroll
         private void SetCellSizeList(int cellCount)
         {
             if (m_useOneCellRect == false)
-                foreach (var index in Enumerable.Range(0, cellCount))
-                    m_list_cellSizeVec.Add(GetCellRect(index));
+                for (int i = 0; i < cellCount; i++)
+                    m_list_cellSizeVec.Add(GetCellRect(i));
             else
             {
                 var cellRect = GetCellRect(0);
-                m_list_cellSizeVec.AddRange(Enumerable.Repeat(cellRect, cellCount));
+                for (int i = 0; i < cellCount; i++)
+                    m_list_cellSizeVec.Add(cellRect);
             }
 
             return;
@@ -635,14 +639,14 @@ namespace RecycleScroll
             #endregion
 
             #region Push Cells and Groups
-            var pushCellIndexList = new List<int>();
-            var pushGroupIndexList = new List<int>();
+            m_pushCellIndexList.Clear();
+            m_pushGroupIndexList.Clear();
             foreach (var groupIndex in m_dict_activatedGroups.Keys)
             {
                 if (pushKeepLow <= groupIndex && groupIndex <= pushKeepHigh)
                     continue;
 
-                pushGroupIndexList.Add(groupIndex);
+                m_pushGroupIndexList.Add(groupIndex);
                 PushIntoGroupStack(m_dict_activatedGroups[groupIndex]);
 
                 var groupData = m_list_groupData[groupIndex];
@@ -653,21 +657,21 @@ namespace RecycleScroll
                     var pushCell = m_dict_activatedCells[cellIndex];
                     pushCell.OnCellBecameInvisible(this);
                     onCellBecameInvisible?.Invoke(pushCell, cellIndex);
-                    pushCellIndexList.Add(cellIndex);
+                    m_pushCellIndexList.Add(cellIndex);
                     PushIntoCellStack(pushCell);
                 }
             }
 
-            foreach (var pushIndex in pushCellIndexList)
+            foreach (var pushIndex in m_pushCellIndexList)
                 m_dict_activatedCells.Remove(pushIndex);
-            foreach (var pushIndex in pushGroupIndexList)
+            foreach (var pushIndex in m_pushGroupIndexList)
                 m_dict_activatedGroups.Remove(pushIndex);
             #endregion
 
             #region Set Cells
-            int totalCellViewCount = m_list_groupData
-                .Where((w, index) => firstGroupViewIndex <= index && index <= lastGroupViewIndex)
-                .Sum(s => s.cellCount);
+            int totalCellViewCount = 0;
+            for (int idx = firstGroupViewIndex; idx <= lastGroupViewIndex; idx++)
+                totalCellViewCount += m_list_groupData[idx].cellCount;
             int lastCellViewIndex = totalCellViewCount - 1;
 
             for (int i = setStartIndex; i >= setLastIndex; i--)
@@ -704,7 +708,9 @@ namespace RecycleScroll
 
                     if (isAlreadyActivatedCell == false)
                     {
+#if UNITY_EDITOR
                         getCell.gameObject.name = string.Format("{0}_Index({1})", getCell.GetType().ToString(), j);
+#endif
 
                         // 셀 오브젝트의 하이어라키 위치 설정
                         getCell.transform.SetParent(getGroup.transform);

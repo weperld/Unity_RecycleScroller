@@ -548,12 +548,16 @@ namespace RecycleScroll
         private void ResetGroupWithCellRange(HorizontalOrVerticalLayoutGroup groupObject, int groupIndex, int sortedStartIndex, int sortedLastIndex)
         {
             ResetGroup(groupObject, groupIndex);
+#if UNITY_EDITOR
             groupObject.gameObject.name = string.Format("Group({0}), Cell Index({1} ~ {2})", groupIndex, sortedStartIndex, sortedLastIndex);
+#endif
         }
         private void ResetGroupNoCells(HorizontalOrVerticalLayoutGroup groupObject, int groupIndex)
         {
             ResetGroup(groupObject, groupIndex);
+#if UNITY_EDITOR
             groupObject.gameObject.name = string.Format("Group({0}), No Cells", groupIndex);
+#endif
         }
 
         [return: NotNull] private HorizontalOrVerticalLayoutGroup PopFromGroupStack()
