@@ -706,7 +706,9 @@ namespace RecycleScroll
 
                     if (isAlreadyActivatedCell == false)
                     {
+#if UNITY_EDITOR
                         getCell.gameObject.name = string.Format("{0}_Index({1})", getCell.GetType().ToString(), j);
+#endif
 
                         // 셀 오브젝트의 하이어라키 위치 설정
                         getCell.transform.SetParent(getGroup.transform);
