@@ -364,12 +364,13 @@ namespace RecycleScroll
         private void SetCellSizeList(int cellCount)
         {
             if (m_useOneCellRect == false)
-                foreach (var index in Enumerable.Range(0, cellCount))
-                    m_list_cellSizeVec.Add(GetCellRect(index));
+                for (int i = 0; i < cellCount; i++)
+                    m_list_cellSizeVec.Add(GetCellRect(i));
             else
             {
                 var cellRect = GetCellRect(0);
-                m_list_cellSizeVec.AddRange(Enumerable.Repeat(cellRect, cellCount));
+                for (int i = 0; i < cellCount; i++)
+                    m_list_cellSizeVec.Add(cellRect);
             }
 
             return;
