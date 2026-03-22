@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 public static class CollectionUtils
@@ -10,12 +9,20 @@ public static class CollectionUtils
     {
         if (positions is null) return -1;
 
-        var ordered = positions
-            .Select((pos, index) => new { index, dist = distanceFunc(pos, pivot) })
-            .OrderBy(o => o.dist)
-            .FirstOrDefault();
-
-        return ordered?.index ?? -1;
+        int closestIndex = -1;
+        float minDist = float.MaxValue;
+        int i = 0;
+        foreach (var pos in positions)
+        {
+            var dist = distanceFunc(pos, pivot);
+            if (dist < minDist)
+            {
+                minDist = dist;
+                closestIndex = i;
+            }
+            i++;
+        }
+        return closestIndex;
     }
     
     public static int FindClosestIndex(this IEnumerable<int> positionArray, int pivot) =>
