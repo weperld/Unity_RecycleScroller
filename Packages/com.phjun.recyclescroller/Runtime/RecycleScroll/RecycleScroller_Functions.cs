@@ -574,7 +574,7 @@ namespace RecycleScroll
             if (pop) goto L_RETURN;
 
             var inst = CreateEmptyGameObject("Group", Tf_GroupPool);
-            pop = (HorizontalOrVerticalLayoutGroup)inst.AddComponent(needType);
+            pop = inst.AddComponent(needType) as HorizontalOrVerticalLayoutGroup;
 
             L_RETURN:
             pop.gameObject.SetActive(true);
