@@ -1009,7 +1009,7 @@ namespace RecycleScroll
 
         private void RecalculateForInsert(int targetCellIndex, int prevCellCount)
         {
-            if (m_loopScroll == false && m_cellCount > 0 && prevCellCount > 0)
+            if (m_scrollerMode.CanDoPartialRecalc(m_cellCount, prevCellCount))
             {
                 // 삭제될 인덱스가 속한 그룹 인덱스 확인
                 var groupIndex = m_dict_groupIndexOfCell[targetCellIndex];
