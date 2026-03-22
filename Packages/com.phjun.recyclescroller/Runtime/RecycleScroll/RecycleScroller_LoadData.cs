@@ -11,6 +11,9 @@ namespace RecycleScroll
 {
     public partial class RecycleScroller
     {
+        private readonly List<int> m_pushCellIndexList = new();
+        private readonly List<int> m_pushGroupIndexList = new();
+
         private LoadDataExtensionComponent[] m_loadDataExtension;
         private LoadDataExtensionComponent[] LoadDataExtension
         {
@@ -632,8 +635,8 @@ namespace RecycleScroll
             #endregion
 
             #region Push Cells and Groups
-            var pushCellIndexList = new List<int>();
-            var pushGroupIndexList = new List<int>();
+            m_pushCellIndexList.Clear();
+            m_pushGroupIndexList.Clear();
             foreach (var groupIndex in m_dict_activatedGroups.Keys)
             {
                 if (m_reverse
@@ -641,7 +644,7 @@ namespace RecycleScroll
                     : (firstGroupViewIndex <= groupIndex && groupIndex <= lastGroupViewIndex))
                     continue;
 
-                pushGroupIndexList.Add(groupIndex);
+                m_pushGroupIndexList.Add(groupIndex);
                 PushIntoGroupStack(m_dict_activatedGroups[groupIndex]);
 
                 var groupData = m_list_groupData[groupIndex];
@@ -652,14 +655,14 @@ namespace RecycleScroll
                     var pushCell = m_dict_activatedCells[cellIndex];
                     pushCell.OnCellBecameInvisible(this);
                     onCellBecameInvisible?.Invoke(pushCell, cellIndex);
-                    pushCellIndexList.Add(cellIndex);
+                    m_pushCellIndexList.Add(cellIndex);
                     PushIntoCellStack(pushCell);
                 }
             }
 
-            foreach (var pushIndex in pushCellIndexList)
+            foreach (var pushIndex in m_pushCellIndexList)
                 m_dict_activatedCells.Remove(pushIndex);
-            foreach (var pushIndex in pushGroupIndexList)
+            foreach (var pushIndex in m_pushGroupIndexList)
                 m_dict_activatedGroups.Remove(pushIndex);
             #endregion
 
