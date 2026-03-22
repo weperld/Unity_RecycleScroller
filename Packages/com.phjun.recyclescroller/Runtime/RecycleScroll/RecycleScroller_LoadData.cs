@@ -665,9 +665,11 @@ namespace RecycleScroll
             #region Set Cells
             int setStartIndex = m_reverse ? firstGroupViewIndex : lastGroupViewIndex;
             int setLastIndex = m_reverse ? lastGroupViewIndex : firstGroupViewIndex;
-            int totalCellViewCount = m_list_groupData
-                .Where((w, index) => m_reverse ? (setStartIndex <= index && index <= setLastIndex) : (setLastIndex <= index && index <= setStartIndex))
-                .Sum(s => s.cellCount);
+            int totalCellViewCount = 0;
+            int rangeStart = m_reverse ? setStartIndex : setLastIndex;
+            int rangeEnd = m_reverse ? setLastIndex : setStartIndex;
+            for (int idx = rangeStart; idx <= rangeEnd; idx++)
+                totalCellViewCount += m_list_groupData[idx].cellCount;
             int lastCellViewIndex = totalCellViewCount - 1;
 
             for (int i = setStartIndex; i >= setLastIndex; i--)
