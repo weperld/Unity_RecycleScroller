@@ -2,7 +2,6 @@ using Cysharp.Threading.Tasks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,6 +12,7 @@ namespace RecycleScroll
     {
         private readonly List<int> m_pushCellIndexList = new();
         private readonly List<int> m_pushGroupIndexList = new();
+        private readonly List<int> m_tempKeyBuffer = new();
 
         private LoadDataExtensionComponent[] m_loadDataExtension;
         private LoadDataExtensionComponent[] LoadDataExtension
