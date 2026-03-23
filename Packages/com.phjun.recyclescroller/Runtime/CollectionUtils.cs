@@ -38,12 +38,16 @@ public static class CollectionUtils
         positionArray.FindClosestIndex(pivot, Vector2.Distance);
     #endregion
     
-    public static List<T> GetSafeRange<T>(this List<T> list, int index, int count)
+    public static bool TryGetSafeRange<T>(this List<T> list, int index, int count, out List<T> result)
     {
         if (list == null || index < 0 || index >= list.Count || count <= 0)
-            return new List<T>();
+        {
+            result = null;
+            return false;
+        }
 
         count = Math.Min(count, list.Count - index);
-        return list.GetRange(index, count);
+        result = list.GetRange(index, count);
+        return true;
     }
 }

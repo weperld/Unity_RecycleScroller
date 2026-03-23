@@ -498,7 +498,7 @@ namespace RecycleScroll
             for (; checkIndex >= 0 && addingGroupsSize - Spacing + TopPadding < viewportSize; checkIndex--)
                 addingGroupsSize += m_list_groupData[checkIndex].size + Spacing;
             var endIndex = checkIndex;
-            var frontAddGroupList = m_list_groupData.GetSafeRange(endIndex, startIndex - endIndex + 1);
+            m_list_groupData.TryGetSafeRange(endIndex, startIndex - endIndex + 1, out var frontAddGroupList);
             #endregion
 
             #region 2. 맨 뒤에 추가될 그룹 데이터 리스트 검사
@@ -508,30 +508,36 @@ namespace RecycleScroll
             for (; checkIndex < originalGroupCount && addingGroupsSize - Spacing + BottomPadding < viewportSize; checkIndex++)
                 addingGroupsSize += m_list_groupData[checkIndex].size + Spacing;
             endIndex = checkIndex;
-            var backAddGroupList = m_list_groupData.GetSafeRange(startIndex, endIndex - startIndex + 1);
+            m_list_groupData.TryGetSafeRange(startIndex, endIndex - startIndex + 1, out var backAddGroupList);
             #endregion
 
             #region 3. 양 끝에 그룹 데이터 리스트 추가에 따른 콜렉션 재계산
-            var frontAddCount = frontAddGroupList.Count;
-            var backAddCount = backAddGroupList.Count;
+            var frontAddCount = frontAddGroupList?.Count ?? 0;
+            var backAddCount = backAddGroupList?.Count ?? 0;
             var groupIndexKeys = m_dict_groupIndexOfCell.Keys.ToList();
             foreach (var cellIndex in groupIndexKeys)
                 m_dict_groupIndexOfCell[cellIndex] += frontAddCount;
 
-            var frontAddGroupPosList = m_dp_groupPos.GetSafeRange(m_dp_groupPos.Count - frontAddCount, frontAddCount);
-            var tempPos = frontAddGroupPosList.FirstOrDefault();
-            for (int i = 0; i < frontAddGroupPosList.Count; i++)
-                frontAddGroupPosList[i] -= tempPos;
-            var frontAddingGroupsSize = frontAddGroupPosList.LastOrDefault()
-                + frontAddGroupList.LastOrDefault().size + Spacing;
+            m_dp_groupPos.TryGetSafeRange(m_dp_groupPos.Count - frontAddCount, frontAddCount, out var frontAddGroupPosList);
+            var tempPos = frontAddGroupPosList?.FirstOrDefault() ?? 0f;
+            if (frontAddGroupPosList != null)
+            {
+                for (int i = 0; i < frontAddGroupPosList.Count; i++)
+                    frontAddGroupPosList[i] -= tempPos;
+            }
+            var frontAddingGroupsSize = (frontAddGroupPosList?.LastOrDefault() ?? 0f)
+                + (frontAddGroupList?.LastOrDefault().size ?? 0f) + Spacing;
             frontAddingGroupsSize = Mathf.Max(frontAddingGroupsSize, 0f);
 
-            var backAddGroupPosList = m_dp_groupPos.GetSafeRange(0, backAddCount);
+            m_dp_groupPos.TryGetSafeRange(0, backAddCount, out var backAddGroupPosList);
             tempPos = m_realContentSize + frontAddingGroupsSize;
-            for (int i = 0; i < backAddGroupPosList.Count; i++)
-                backAddGroupPosList[i] += tempPos;
-            var backAddingGroupsSize = backAddGroupPosList.LastOrDefault() - backAddGroupPosList.FirstOrDefault()
-                + backAddGroupList.LastOrDefault().size + Spacing;
+            if (backAddGroupPosList != null)
+            {
+                for (int i = 0; i < backAddGroupPosList.Count; i++)
+                    backAddGroupPosList[i] += tempPos;
+            }
+            var backAddingGroupsSize = (backAddGroupPosList?.LastOrDefault() ?? 0f) - (backAddGroupPosList?.FirstOrDefault() ?? 0f)
+                + (backAddGroupList?.LastOrDefault().size ?? 0f) + Spacing;
             backAddingGroupsSize = Mathf.Max(backAddingGroupsSize, 0f);
 
             m_realContentSize += frontAddingGroupsSize + backAddingGroupsSize;
@@ -539,8 +545,8 @@ namespace RecycleScroll
             #region 그룹 위치 리스트 재계산
             for (int i = 0; i < m_dp_groupPos.Count; i++)
                 m_dp_groupPos[i] += frontAddingGroupsSize;
-            m_dp_groupPos.InsertRange(0, frontAddGroupPosList);
-            m_dp_groupPos.AddRange(backAddGroupPosList);
+            if (frontAddGroupPosList != null) m_dp_groupPos.InsertRange(0, frontAddGroupPosList);
+            if (backAddGroupPosList != null) m_dp_groupPos.AddRange(backAddGroupPosList);
             #endregion
 
             #region 페이지 위치 리스트 재계산
@@ -556,30 +562,30 @@ namespace RecycleScroll
                 if (frontAddCount % m_pagingData.countPerPage > 0) frontPageCount++;
                 frontPageCount++;
                 var frontAddPageStartIndex = m_dp_pagePos.Count - frontPageCount;
-                var frontPagePosList = m_dp_pagePos.GetSafeRange(frontAddPageStartIndex, frontPageCount)
-                    .Select(pos => pos - showingContentSize + frontAddingGroupsSize);
+                m_dp_pagePos.TryGetSafeRange(frontAddPageStartIndex, frontPageCount, out var frontPagePosRaw);
+                var frontPagePosList = frontPagePosRaw?.Select(pos => pos - showingContentSize + frontAddingGroupsSize);
                 frontAdditionalPageCount = frontPageCount;
 
                 // 뒤에 추가된 그룹 데이터들이 속한 페이지 체크
                 var backPageCount = backAddCount / m_pagingData.countPerPage;
                 if (backAddCount % m_pagingData.countPerPage > 0) backPageCount++;
                 backPageCount++;
-                var backPagePosList = m_dp_pagePos.GetSafeRange(0, backPageCount)
-                    .Select(pos => pos + m_realContentSize - backAddingGroupsSize);
+                m_dp_pagePos.TryGetSafeRange(0, backPageCount, out var backPagePosRaw);
+                var backPagePosList = backPagePosRaw?.Select(pos => pos + m_realContentSize - backAddingGroupsSize);
                 backAdditionalPageCount = backPageCount;
 
                 // 각 페이지 위치 리스트 재계산
                 for (int i = 0; i < m_dp_pagePos.Count; i++)
                     m_dp_pagePos[i] += frontAddingGroupsSize;
-                m_dp_pagePos.InsertRange(0, frontPagePosList);
-                m_dp_pagePos.AddRange(backPagePosList);
+                if (frontPagePosList != null) m_dp_pagePos.InsertRange(0, frontPagePosList);
+                if (backPagePosList != null) m_dp_pagePos.AddRange(backPagePosList);
             }
             #endregion
             #endregion
 
             #region 4. 추가된 그룹 데이터 리스트를 각각의 양 끝에 추가
-            m_list_groupData.InsertRange(0, frontAddGroupList);
-            m_list_groupData.AddRange(backAddGroupList);
+            if (frontAddGroupList != null) m_list_groupData.InsertRange(0, frontAddGroupList);
+            if (backAddGroupList != null) m_list_groupData.AddRange(backAddGroupList);
             #endregion
 
             // 계산된 값으로 루프 모드 전략 객체 생성
