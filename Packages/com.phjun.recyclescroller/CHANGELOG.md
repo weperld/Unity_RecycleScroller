@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - `UpdateCellView()` 매 프레임 `m_reverse`/`ScrollAxis` 반복 분기 제거 — LoadData 시점 캐싱 및 진입부 로컬 변수 1회 정리
+- 페이지 이동(`NextRealPageIndex`, `PrevRealPageIndex`)의 루프 판정을 `LoopScrollIsOn`(Inspector 설정값)에서 `IsLoopScrollable`(런타임 루프 가능 여부)로 변경 — 콘텐츠가 뷰포트보다 작으면 루프 설정이 켜져 있어도 페이지가 순환하지 않음
 
 ## [1.5.0] - 2026-03-18
 
