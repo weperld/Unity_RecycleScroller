@@ -11,7 +11,8 @@ namespace RecycleScroll.Editor
         private const string GITHUB_API_URL = "https://api.github.com/repos/weperld/Unity_RecycleScroller/releases/latest";
         private const string PACKAGE_NAME = "com.phjun.recyclescroller";
         private const string SESSION_STATE_KEY = "RecycleScroller_VersionChecked";
-        private const string PREFS_SKIP_VERSION_KEY = "RecycleScroller_SkipVersion";
+        private const string PREFS_POSTPONE_UNTIL_KEY = "RecycleScroller_PostponeUntil";
+        private const string PREFS_POSTPONE_VERSION_KEY = "RecycleScroller_PostponeVersion";
 
         static PackageVersionChecker()
         {
@@ -117,15 +118,38 @@ namespace RecycleScroll.Editor
 
         private static void CompareAndNotify(string currentVersion, string latestVersion)
         {
-            // Check if user chose to skip this version
-            var skippedVersion = EditorPrefs.GetString(PREFS_SKIP_VERSION_KEY, string.Empty);
-            if (skippedVersion == latestVersion)
-                return;
+            var postponeVersion = EditorPrefs.GetString(PREFS_POSTPONE_VERSION_KEY, string.Empty);
+
+            if (!string.IsNullOrEmpty(postponeVersion))
+            {
+                if (postponeVersion != currentVersion)
+                {
+                    // 설치 버전이 변경됨 → 사용자가 직접 업데이트 → postpone 해제
+                    EditorPrefs.DeleteKey(PREFS_POSTPONE_UNTIL_KEY);
+                    EditorPrefs.DeleteKey(PREFS_POSTPONE_VERSION_KEY);
+                }
+                else
+                {
+                    // postpone 기간 내인지 확인
+                    var postponeUntilStr = EditorPrefs.GetString(PREFS_POSTPONE_UNTIL_KEY, string.Empty);
+                    if (!string.IsNullOrEmpty(postponeUntilStr)
+                        && long.TryParse(postponeUntilStr, out var ticks))
+                    {
+                        var postponeUntil = new DateTime(ticks, DateTimeKind.Utc);
+                        if (DateTime.UtcNow < postponeUntil)
+                            return;
+                    }
+
+                    // postpone 만료 → 키 정리
+                    EditorPrefs.DeleteKey(PREFS_POSTPONE_UNTIL_KEY);
+                    EditorPrefs.DeleteKey(PREFS_POSTPONE_VERSION_KEY);
+                }
+            }
 
             // Compare versions
             if (IsNewerVersion(latestVersion, currentVersion))
             {
-                ShowUpdatePopup(currentVersion, latestVersion);
+                UpdateNotificationWindow.Show(currentVersion, latestVersion);
             }
         }
 
@@ -156,40 +180,10 @@ namespace RecycleScroll.Editor
             }
         }
 
-        private static void ShowUpdatePopup(string currentVersion, string latestVersion)
+        internal static void SetPostpone(string currentVersion, DateTime until)
         {
-            var message = $"RecycleScroller 패키지의 새로운 버전이 출시되었습니다!\n\n" +
-                          $"현재 버전: {currentVersion}\n" +
-                          $"최신 버전: {latestVersion}\n\n" +
-                          $"업데이트하려면:\n" +
-                          $"1. Package Manager를 엽니다 (Window > Package Manager)\n" +
-                          $"2. RecycleScroller 패키지를 선택합니다\n" +
-                          $"3. 우측 상단의 'Update' 버튼을 클릭하거나\n" +
-                          $"4. 'Remove' 후 Git URL로 재설치합니다:\n" +
-                          $"   https://github.com/weperld/Unity_RecycleScroller.git?path=Packages/com.phjun.recyclescroller";
-
-            var choice = EditorUtility.DisplayDialogComplex(
-                "RecycleScroller 업데이트 알림",
-                message,
-                "GitHub 릴리즈 페이지 열기",
-                "나중에",
-                "이 버전 건너뛰기"
-            );
-
-            switch (choice)
-            {
-                case 0: // Open GitHub releases page
-                    Application.OpenURL("https://github.com/weperld/Unity_RecycleScroller/releases");
-                    break;
-
-                case 1: // Later
-                    // Do nothing, will check again next session
-                    break;
-
-                case 2: // Skip this version
-                    EditorPrefs.SetString(PREFS_SKIP_VERSION_KEY, latestVersion);
-                    break;
-            }
+            EditorPrefs.SetString(PREFS_POSTPONE_VERSION_KEY, currentVersion);
+            EditorPrefs.SetString(PREFS_POSTPONE_UNTIL_KEY, until.Ticks.ToString());
         }
     }
 }
