@@ -2,7 +2,6 @@ using Cysharp.Threading.Tasks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,6 +12,7 @@ namespace RecycleScroll
     {
         private readonly List<int> m_pushCellIndexList = new();
         private readonly List<int> m_pushGroupIndexList = new();
+        private readonly List<int> m_tempKeyBuffer = new();
 
         private LoadDataExtensionComponent[] m_loadDataExtension;
         private LoadDataExtensionComponent[] LoadDataExtension
@@ -514,24 +514,27 @@ namespace RecycleScroll
             #region 3. 양 끝에 그룹 데이터 리스트 추가에 따른 콜렉션 재계산
             var frontAddCount = frontAddGroupList.Count;
             var backAddCount = backAddGroupList.Count;
-            var groupIndexKeys = m_dict_groupIndexOfCell.Keys.ToList();
-            foreach (var cellIndex in groupIndexKeys)
+            m_tempKeyBuffer.Clear();
+            foreach (var key in m_dict_groupIndexOfCell.Keys)
+                m_tempKeyBuffer.Add(key);
+            foreach (var cellIndex in m_tempKeyBuffer)
                 m_dict_groupIndexOfCell[cellIndex] += frontAddCount;
 
             var frontAddGroupPosList = m_dp_groupPos.GetSafeRange(m_dp_groupPos.Count - frontAddCount, frontAddCount);
-            var tempPos = frontAddGroupPosList.FirstOrDefault();
+            var tempPos = frontAddGroupPosList.Count > 0 ? frontAddGroupPosList[0] : 0f;
             for (int i = 0; i < frontAddGroupPosList.Count; i++)
                 frontAddGroupPosList[i] -= tempPos;
-            var frontAddingGroupsSize = frontAddGroupPosList.LastOrDefault()
-                + frontAddGroupList.LastOrDefault().size + Spacing;
+            var frontAddingGroupsSize = (frontAddGroupPosList.Count > 0 ? frontAddGroupPosList[frontAddGroupPosList.Count - 1] : 0f)
+                + (frontAddGroupList.Count > 0 ? frontAddGroupList[frontAddGroupList.Count - 1].size : 0f) + Spacing;
             frontAddingGroupsSize = Mathf.Max(frontAddingGroupsSize, 0f);
 
             var backAddGroupPosList = m_dp_groupPos.GetSafeRange(0, backAddCount);
             tempPos = m_realContentSize + frontAddingGroupsSize;
             for (int i = 0; i < backAddGroupPosList.Count; i++)
                 backAddGroupPosList[i] += tempPos;
-            var backAddingGroupsSize = backAddGroupPosList.LastOrDefault() - backAddGroupPosList.FirstOrDefault()
-                + backAddGroupList.LastOrDefault().size + Spacing;
+            var backAddingGroupsSize = (backAddGroupPosList.Count > 0 ? backAddGroupPosList[backAddGroupPosList.Count - 1] : 0f)
+                - (backAddGroupPosList.Count > 0 ? backAddGroupPosList[0] : 0f)
+                + (backAddGroupList.Count > 0 ? backAddGroupList[backAddGroupList.Count - 1].size : 0f) + Spacing;
             backAddingGroupsSize = Mathf.Max(backAddingGroupsSize, 0f);
 
             m_realContentSize += frontAddingGroupsSize + backAddingGroupsSize;
@@ -556,16 +559,18 @@ namespace RecycleScroll
                 if (frontAddCount % m_pagingData.countPerPage > 0) frontPageCount++;
                 frontPageCount++;
                 var frontAddPageStartIndex = m_dp_pagePos.Count - frontPageCount;
-                var frontPagePosList = m_dp_pagePos.GetSafeRange(frontAddPageStartIndex, frontPageCount)
-                    .Select(pos => pos - showingContentSize + frontAddingGroupsSize);
+                var frontPagePosList = m_dp_pagePos.GetSafeRange(frontAddPageStartIndex, frontPageCount);
+                for (int i = 0; i < frontPagePosList.Count; i++)
+                    frontPagePosList[i] += -showingContentSize + frontAddingGroupsSize;
                 frontAdditionalPageCount = frontPageCount;
 
                 // 뒤에 추가된 그룹 데이터들이 속한 페이지 체크
                 var backPageCount = backAddCount / m_pagingData.countPerPage;
                 if (backAddCount % m_pagingData.countPerPage > 0) backPageCount++;
                 backPageCount++;
-                var backPagePosList = m_dp_pagePos.GetSafeRange(0, backPageCount)
-                    .Select(pos => pos + m_realContentSize - backAddingGroupsSize);
+                var backPagePosList = m_dp_pagePos.GetSafeRange(0, backPageCount);
+                for (int i = 0; i < backPagePosList.Count; i++)
+                    backPagePosList[i] += m_realContentSize - backAddingGroupsSize;
                 backAdditionalPageCount = backPageCount;
 
                 // 각 페이지 위치 리스트 재계산
