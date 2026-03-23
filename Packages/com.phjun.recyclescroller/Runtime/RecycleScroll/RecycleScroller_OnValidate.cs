@@ -83,6 +83,7 @@ namespace RecycleScroll
                 }
 
                 layoutGroup = layoutGroupObj.AddComponent(needType) as HorizontalOrVerticalLayoutGroup;
+                if (layoutGroup == null) return;
                 SetLayoutGroupFieldOfCellGroup(layoutGroup);
 
                 #endregion
