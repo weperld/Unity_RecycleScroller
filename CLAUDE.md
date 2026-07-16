@@ -41,9 +41,5 @@ Packages/com.phjun.recyclescroller/
 - 테스트: Window > General > Test Runner
 - 실행: Editor Play Mode (Ctrl+P)
 
-## 작업 방식
-모든 코드 변경은 커스텀 명령어로 시작한다.
-- 대규모 (새 기능, 아키텍처 변경): `/project:신규` 또는 `/project:수정`
-- 중소규모 (버그 수정, 리팩토링): `/project:간편`
-- 명령어 없이 직접 수정 요청 시, 규모를 판단하여 적절한 명령어 사용을 안내한다.
-- 명령어 목록: `/project:명령어`
+## 커밋 규칙
+- `.guides/COMMIT_RULES.md` 참조 ([태그] 요약 형식, 그룹핑, 안전 규칙)
