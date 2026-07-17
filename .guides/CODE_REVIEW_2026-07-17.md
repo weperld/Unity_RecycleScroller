@@ -13,9 +13,10 @@
 
 ## 🔴 Critical — RecalculateForInsert (RecycleScroller_Functions.cs:1015-1056)
 
-- [ ] `[O]` **[critical] AddToEnd → 항상 KeyNotFoundException** — `Insert(m_cellCount, n)`의 `targetCellIndex = 이전 셀 개수`는 `m_dict_groupIndexOfCell`에 없는 키(키는 0~cellCount-1). 비루프 모드에서 기존 데이터 1개 이상이면 "맨 뒤 추가"가 무조건 예외. → 끝 추가 시 전체 재계산 폴백 또는 마지막 그룹부터 재계산
-- [ ] `[O]` **[major] 그룹당 셀 2개 이상이면 중복 키 ArgumentException** (1035-1045행) — 딕셔너리를 `targetCellIndex` 미만으로 자르고 `groupStartIndex`부터 재추가 → 범위 겹침. `m_fixedCellCount==1`일 때만 우연히 통과. → 자르는 기준을 `groupStartIndex` 미만으로 통일
-- [ ] `[O]` **[major] 페이징 사용 시 잘린 딕셔너리 조회** (1038-1042행) — 자른 뒤 `FindPageIndex_FromCellIndex(targetCellIndex)` 호출 → 사라진 키 조회. 삭제 시 -1 → `RemoveRange(-1, …)`. → 페이지 인덱스를 자르기 전에 계산 또는 `FindPageIndex_FromGroupIndex` 전환
+- [x] `[O]` **[critical] AddToEnd → 항상 KeyNotFoundException** — `Insert(m_cellCount, n)`의 `targetCellIndex = 이전 셀 개수`는 `m_dict_groupIndexOfCell`에 없는 키(키는 0~cellCount-1). 비루프 모드에서 기존 데이터 1개 이상이면 "맨 뒤 추가"가 무조건 예외. → 끝 추가 시 전체 재계산 폴백 또는 마지막 그룹부터 재계산
+- [x] `[O]` **[major] 그룹당 셀 2개 이상이면 중복 키 ArgumentException** (1035-1045행) — 딕셔너리를 `targetCellIndex` 미만으로 자르고 `groupStartIndex`부터 재추가 → 범위 겹침. `m_fixedCellCount==1`일 때만 우연히 통과. → 자르는 기준을 `groupStartIndex` 미만으로 통일
+- [x] `[O]` **[major] 페이징 사용 시 잘린 딕셔너리 조회** (1038-1042행) — 자른 뒤 `FindPageIndex_FromCellIndex(targetCellIndex)` 호출 → 사라진 키 조회. 삭제 시 -1 → `RemoveRange(-1, …)`. → 페이지 인덱스를 자르기 전에 계산 또는 `FindPageIndex_FromGroupIndex` 전환
+- [x] `[O]` **[major] (수정 중 추가 발견) 콘텐트 사이즈 재구성 오류** — 부분 재계산의 m_realContentSize 복원 공식이 `Top+Bottom+pos+size`로 TopPadding≠Spacing이면 재계산 그룹 전체가 어긋남 → `pos+size+Spacing+Bottom`으로 교정. 페이지 리스트 제거 조건도 추가 조건(countPerPage>0)과 일치시켜 누적 오염 해소 (14576f1에서 4건 일괄 수정)
 
 ## 🟠 품질 — 패키지 사용자 측면 (1순위 A — 전부 수정)
 
