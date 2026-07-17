@@ -3,7 +3,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -1016,30 +1015,43 @@ namespace RecycleScroll
         {
             if (m_scrollerMode.CanDoPartialRecalc(m_cellCount, prevCellCount))
             {
-                // 삭제될 인덱스가 속한 그룹 인덱스 확인
-                var groupIndex = m_dict_groupIndexOfCell[targetCellIndex];
+                // 맨 뒤 삽입(AddToEnd)은 targetCellIndex == prevCellCount라 딕셔너리에 키가 없음 → 마지막 셀 기준으로 조회
+                var lookupCellIndex = Mathf.Min(targetCellIndex, prevCellCount - 1);
+
+                // 대상 인덱스가 속한 그룹 인덱스 확인
+                var groupIndex = m_dict_groupIndexOfCell[lookupCellIndex];
 
                 // 속한 그룹의 가장 첫 셀 인덱스 확인
                 var groupStartIndex = m_list_groupData[groupIndex].startDataIndex;
 
-                // 그룹 관련 리스트들의 요소들 중 groupIndex 이상의 값들을 초기화 및 제거
-                ResetRealContentSize();
+                // groupIndex 직전까지의 콘텐트 사이즈로 복원 (그룹 추가 직전 시점 값 = pos + size + Spacing + BottomPadding)
                 if (groupIndex > 0)
                 {
                     var frontGroupIndex = groupIndex - 1;
-                    m_realContentSize += m_dp_groupPos[frontGroupIndex] + m_list_groupData[frontGroupIndex].size;
+                    m_realContentSize = m_dp_groupPos[frontGroupIndex] + m_list_groupData[frontGroupIndex].size + Spacing + BottomPadding;
+                }
+                else ResetRealContentSize();
+
+                // 페이지 제거 범위는 그룹 리스트를 자르기 전에 계산.
+                // 시작 그룹이 groupIndex 이상인 페이지만 무효 — 그 앞 페이지들의 위치는 유지되는 그룹 기준이라 유효
+                // 조건은 재계산의 페이지 추가 조건(countPerPage > 0)과 일치시켜야 리스트가 누적 오염되지 않음
+                if (m_pagingData.countPerPage > 0)
+                {
+                    var removeFromPage = (groupIndex + m_pagingData.countPerPage - 1) / m_pagingData.countPerPage;
+                    removeFromPage = Mathf.Min(removeFromPage, m_dp_pagePos.Count);
+                    m_dp_pagePos.RemoveRange(removeFromPage, m_dp_pagePos.Count - removeFromPage);
                 }
 
+                // 그룹 관련 리스트들의 요소들 중 groupIndex 이상의 값들을 제거
                 m_dp_groupPos.RemoveRange(groupIndex, m_dp_groupPos.Count - groupIndex);
                 m_list_groupData.RemoveRange(groupIndex, m_list_groupData.Count - groupIndex);
-                m_dict_groupIndexOfCell = m_dict_groupIndexOfCell.Where(x => x.Key < targetCellIndex).ToDictionary(x => x.Key, x => x.Value);
 
-                // 페이지 관련 리스트들의 요소들 중 pageIndex 이상의 값들을 초기화 및 제거
-                if (m_pagingData.usePaging)
-                {
-                    var pageIndex = FindPageIndex_FromCellIndex(targetCellIndex);
-                    m_dp_pagePos.RemoveRange(pageIndex, m_dp_pagePos.Count - pageIndex);
-                }
+                // 재계산이 groupStartIndex부터 키를 다시 Add하므로, 그 이상 키를 전부 제거 (targetCellIndex 기준 자르기는 중복 키 Add 유발)
+                m_tempKeyBuffer.Clear();
+                foreach (var key in m_dict_groupIndexOfCell.Keys)
+                    if (key >= groupStartIndex) m_tempKeyBuffer.Add(key);
+                foreach (var key in m_tempKeyBuffer)
+                    m_dict_groupIndexOfCell.Remove(key);
 
                 // groupIndex부터 재계산
                 CalculateTotalScrollSize(m_cellCount, startIndex: groupStartIndex);
