@@ -36,17 +36,17 @@
 - [ ] `[X]` ~~**[major] MathUtils.cs Derivative/Integrate/GetGradient 전량 미사용** (12-157행, ~145줄)~~ — **유지 결정** (삭제 안 함)
 - [ ] `[X]` ~~**[minor] EditorDrawerHelper.cs 죽은 코드 4개** (124-166, 206-225행)~~ — **유지 결정** (삭제 안 함)
 - [ ] `[O]` **[major] MinMax*Drawer 4종 90% 중복** — 제네릭 베이스로 통합(ReadValue/WriteValue/DrawField만 추상화) → Set All 버그 수정이 1곳으로 수렴
-- [ ] `[O]` **[major] FindVisibleGroupIndices O(groupCount) 선형 스캔** (_Functions.cs:760-785) — 매 스크롤 호출. 정렬 리스트라 이진 탐색 가능. GC는 없음, 순수 시간복잡도
+- [x] `[O]` **[major] FindVisibleGroupIndices O(groupCount) 선형 스캔** — 2.0.0 리팩토링에서 이진 탐색(UpperBound) 기반으로 교체 완료
 - [ ] `[O]` **[minor] RS_LDE_...GroupCount2.cs 조건식 파서 과설계** (66-350행) — 정수 하나 비교에 재귀 하향 파서 ~300줄. `"10 >"`→`groupCount < 10` 역직관 매핑. 미사용 `ExpressionParser.Evaluate(int)` 제거
 
 ## 🟡 버그 — 비동기/경계값 (2순위 — 전부 수정)
 
 - [ ] `[O]` **[major] AddressableCellProvider.PreloadCellPrefabsAsync CancellationToken 없음 + 해제 후 사용** (76-89행) — await 중 파괴 시 해제된 애셋 유령 참조. → 토큰 파라미터 + await 후 `this == null` 가드 (destroyCancellationToken 활용)
 - [ ] `[O]` **[major] RecycleScrollerHelper 코루틴 브리지 hang** (8-34행) — 소유자 파괴 시 tcs 미완료 → await 영구 대기 (_LoadData.cs:224 경로). → UniTask 내장 `WaitForEndOfFrame(mb, token)`으로 대체하면 파일 삭제 가능
-- [ ] `[O]` **[minor] MoveTo_Base 0 나누기 NaN** (_Functions.cs:614) — 콘텐츠<뷰포트면 RealScrollSize==0 → NaN으로 Content 오염. RealScrollPosition 세터처럼 `>0f` 가드
-- [ ] `[O]` **[minor] 빈 데이터에서 MoveToIndex 예외** (_Functions.cs:67-72) — Count==0이면 Clamp(0,0,-1)=-1 → 딕셔너리 [-1] 조회. `m_list_cellSizeVec` 범위 미검사(730,737,759,787행)도 동일 계열. → cellCount==0 조기 반환
+- [x] `[O]` **[minor] MoveTo_Base 0 나누기 NaN** — 2.0.0 리팩토링에서 MoveTo_Base가 GetMoveDelta 기반으로 재작성되며 구조적으로 소멸 (scrollSize 0 가드 포함)
+- [x] `[O]` **[minor] 빈 데이터에서 MoveToIndex 예외** — CalculateDistanceTo에 cellCount==0 조기 반환 추가 (2.0.0). 단 `m_list_cellSizeVec` 직접 인덱싱(MoveToIndex_ViewportCenter_UseCellSizeVec 계열)의 범위 가드는 미적용 — 잔여
 - [ ] `[O]` **[minor] SerializableDictionary.cs:136 중복 키 역직렬화 크래시** — ToDictionary가 ArgumentException. 인스펙터에서 기존 키를 같은 값으로 직접 수정하면 발생 가능. → 방어적 구성 + LogWarning
-- [ ] `[O]` **[minor] LoopScrollbarMode.cs:44-47 콘텐츠<뷰포트 시 movementScale 음수** — `Mathf.Max(0f, 1f - naturalSize)` 방어
+- [x] `[O]` **[minor] LoopScrollbarMode.cs 콘텐츠<뷰포트 시 movementScale 음수** — 2.0.0의 CheckLoopable이 콘텐츠≤뷰포트+최대그룹이면 루프를 차단하므로 원천 해소
 
 ## ⚪ 기타 (전부 수정)
 
