@@ -5,11 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.0] - 2026-07-18
+
+### 아키텍처 변경 (Breaking)
+- **루프/비루프 통일: 윈도우 콘텐트 + 가상 스크롤 위치** — 위치의 진실이 `Content.anchoredPosition`에서 내부 가상 스칼라로 이동. Content 렉트는 뷰포트+여유분 크기의 윈도우로 축소되고, 루프의 복제 그룹 생성·경계 점프 리포지션이 제거됨
+- 루프 모드도 Insert/Remove 부분 재계산 지원 (복제 데이터가 사라져 가능해짐)
+- 루프 MoveTo/MoveToIndex가 **최단거리 경로**로 이동 (wrap 경계 통과 허용)
+- 루프 스크롤 가능 최소 조건 추가: `ContentSize >= ViewportSize + 최대 그룹 크기 + Spacing` 미만이면 경고 후 비루프로 폴백
+- LoadData 호출 전에는 완전한 순정 ScrollRect로 동작 — 루프/페이징 설정이 로드 전 동작에 간섭하지 않음 (MovementType 강제·페이지 스냅·관성 억제 모두 로드 후에만 적용)
+- 페이징이 `m_inertia` 직렬화 값을 영구 변경하던 동작 제거 — 설정 훼손 없이 파생 값(UseInertia)으로 억제
+
+### 제거된 API (마이그레이션 표)
+| 구 API | 신 API |
+|---|---|
+| `RealContentSize` / `ShowingContentSize` / `RealSize` / `ShowingSize` | `ContentSize` |
+| `RealScrollSize` / `ShowingScrollSize` | `ScrollSize` |
+| `RealScrollPosition` / `ShowingScrollPosition` | `ScrollPosition` (루프: [0, ContentSize) wrap) |
+| `RealNormalizedScrollPosition` / `ShowingNormalizedScrollPosition` | `NormalizedScrollPosition` (루프: 1 초과 가능) |
+| `ShowingPageCount` | `PageCount` |
+| `ConvertRealToShow` / `ConvertShowToReal` | 삭제 (좌표계가 하나) |
+| `LoadParam_NormalScrollPos_Showing` / `LoadParam_DenormalScrollPos_Showing` | 무접미 버전으로 통합 |
+| `RecycleScrollbar.OnLoopValueChanged(real, showing)` | `OnValueChanged(float)`로 통합 |
+| `IRecycleScrollbarDelegate`의 `LoopScrollIsOn`/`RealSize`/`ShowingSize`/`Convert*` | `IsLoopScrollable`/`ContentSize`/`ViewportSize`만 유지 |
+
+### 마이그레이션 주의
+- LoadData 이후 `Content.anchoredPosition` 직접 조작은 더 이상 지원되지 않음 (다음 렌더에서 덮어씀). `ScrollPosition`/`NormalizedScrollPosition`을 사용할 것
+- 루프 모드의 주축 패딩은 `spacing/2` 정책이 실제로 적용됨 (이음새 간격 = spacing)
 
 ### Changed
+- **스크롤바 RectTransform 점유 완화 (순정 parity)** — 핸들은 Anchors만 점유(마진 sizeDelta/anchoredPosition 조정 가능), Sliding Area는 점유하지 않음, 스크롤러의 스크롤바 루트 주축 점유는 `AutoHideAndExpandViewport`일 때만. 루프 서브 핸들은 메인 핸들의 마진을 자동 복사
+  - 마이그레이션: 커스텀 스크롤바는 Sliding Area anchors를 full-stretch (0,0)-(1,1)로 설정 필요 (주축 크기 0이면 1회 경고 로그로 안내). 비-Expand 모드에서 스크롤바 루트가 직렬화 값으로 복원되므로 배치 확인 권장. 패키지 프리팹은 수정 완료
+- `LoadData`에 위치 파라미터가 없으면 **항상 기존 스크롤 위치 유지**로 통일 — 기존에는 "파라미터 0개면 유지, 다른 파라미터만 있으면 맨 앞 리셋"으로 비일관적이었음. 맨 앞 이동이 필요하면 `LoadParam_NormalScrollPos(0)`을 명시
+- 스크롤바 트랙 클릭 반복 속도를 프레임 기준 → 시간 기준으로 변경 — `Click Repeat Interval`(기본 0.01초, unscaled)로 조절 가능, 0이면 1.x 동작(매 프레임)
+- 루프 wrap 상태의 트랙 클릭 방향을 원형 최단 경로 기준으로 개선, 서브 핸들 클릭은 핸들 클릭으로 취급
 - `UpdateCellView()` 매 프레임 `m_reverse`/`ScrollAxis` 반복 분기 제거 — LoadData 시점 캐싱 및 진입부 로컬 변수 1회 정리
 - 페이지 이동(`NextRealPageIndex`, `PrevRealPageIndex`)의 루프 판정을 `LoopScrollIsOn`(Inspector 설정값)에서 `IsLoopScrollable`(런타임 루프 가능 여부)로 변경 — 콘텐츠가 뷰포트보다 작으면 루프 설정이 켜져 있어도 페이지가 순환하지 않음
+- 가시 그룹 탐색을 이진 탐색 기반으로 개선 (`FindVisibleGroupIndices`)
+- MoveToIndex/JumpToIndex 계열은 데이터 인덱스 기준으로 통일 — reverse에서도 해당 데이터 셀의 시각 위치로 정확히 이동. 시각(배치) 순서 기준 이동은 신규 `VisualIndexToDataIndex(int)` 변환 후 호출
+- reverse 모드의 그룹/셀 활성화 순회가 실제로 동작하도록 수정 (기존 코드는 역방향 조건이 성립하지 않아 활성화가 누락됨)
+
+### Fixed
+- `JumpToPage`/`MoveToPage` 계열이 실좌표를 normalized로 해석하고 뷰포트 피벗 보정을 누락해 엉뚱한 페이지로 이동하던 버그 — 페이지 스냅과 동일 공식으로 통일
+- 스크롤바 트랙 클릭(드래그 없이 눌렀다 뗌) 후 페이지 스냅이 동작하지 않던 문제 — 클릭 해제도 드래그 종료와 동일하게 처리
+- 셀 활성화 시 `GetCellRect` 선언 크기를 셀 RectTransform에 반영 (`UpdateCellSize`) — 가변 크기 셀이 시각적으로도 올바른 크기로 표시됨 (기존에는 배치 계산에만 사용되고 렉트는 프리팹 크기 유지)
+- reverse에서 페이지/그룹 파티션이 데이터 순서 기준이라 시각 첫 페이지·그룹이 나머지 조각이 되던 문제 — 시각 순서 기준으로 재구성 (나머지는 스크롤 끝 배치)
+- Elastic + 페이징에서 경계 밖 드래그 해제 시 스프링 복원과 페이지 스냅이 충돌해 버벅이던 문제 — 이징 중 경계 물리 양보로 스냅 우선
+- 마지막 페이지 셀 부족 시 마그넷이 끝 페이지에 도달하지 못하던 문제 — 최근접 페이지 판정을 '착지 지점' 기준으로 변경 (비루프는 꼬리 페이지가 스크롤 끝 정렬로 수렴, 루프는 원형 최근접 유지)
+- `RecalculateForInsert` 부분 재계산 버그 4건 (AddToEnd 예외, 중복 키, 페이지 잘림, 콘텐트 사이즈 재구성 오류)
+- 빈 데이터에서 `MoveToIndex` 호출 시 예외 가드
+- `MoveTo` 계열의 ScrollSize 0 나누기 제거 (구조적으로 소멸)
 
 ## [1.5.0] - 2026-03-18
 
