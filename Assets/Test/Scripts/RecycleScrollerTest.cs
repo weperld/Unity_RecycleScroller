@@ -14,13 +14,23 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
 
     [Header("Cell Settings")]
     [SerializeField] private int m_cellCount = 50;
-    [SerializeField] private float m_cellSize = 100f;
-    [SerializeField] private float m_cellWidth = 300f;
+    // RSCellRect 의미: 첫 인자 = 주축(Size), 둘째 인자 = 보조축(CrossAxisSize)
+    [Tooltip("주축(스크롤 방향) 크기 범위 (min == max면 균일)")]
+    [SerializeField] private Vector2 m_cellMainSizeRange = new(100f, 100f);
+    [Tooltip("보조축 크기 범위 (min == max면 균일)")]
+    [SerializeField] private Vector2 m_cellCrossSizeRange = new(300f, 300f);
+
+    private float CellMainSize => m_cellMainSizeRange.x;
+    private float CellCrossSize => m_cellCrossSizeRange.x;
 
     [Header("Runtime Controls")]
     [SerializeField] private int m_jumpToIndex = 0;
     [SerializeField] private int m_insertIndex = 0;
     [SerializeField] private int m_removeIndex = 0;
+
+    [Header("Startup")]
+    [Tooltip("끄면 Play 시 LoadData를 호출하지 않음 — LoadData 전 순정 ScrollRect 동작 테스트용")]
+    [SerializeField] private bool m_loadDataOnStart = true;
 
     private TestCell m_cellPrefab;
 
@@ -37,6 +47,12 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
         CreateCellPrefab();
         RegisterOnValueChangedTest();
 
+        if (m_loadDataOnStart) StartLoadData();
+        else Debug.Log("[RecycleScrollerTest] Load Data On Start가 꺼져 있습니다 — LoadData 전 순정 ScrollRect 상태. GUI 패널의 [초기화] 그룹으로 더미 생성/로드 가능");
+    }
+
+    private void StartLoadData()
+    {
         m_scroller.del = this;
         var callbacks = m_scroller.LoadData();
         callbacks.Complete += result =>
@@ -44,10 +60,34 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
             Debug.Log($"[RecycleScrollerTest] LoadData 완료: {result}"
                 + $"\n  - CellCount: {m_scroller.CellCount}"
                 + $"\n  - GroupCount: {m_scroller.GroupCount}"
-                + $"\n  - RealContentSize: {m_scroller.RealContentSize}"
+                + $"\n  - ContentSize: {m_scroller.ContentSize}"
                 + $"\n  - ViewportSize: {m_scroller.ViewportSize}");
             LogScrollbarState();
         };
+    }
+
+    /// <summary>
+    /// LoadData 없이 Content에 더미 셀을 직접 배치 — 순정 ScrollRect 동작 확인용.
+    /// LoadData 전에는 스크롤러가 주축 사이즈를 점유하지 않으므로 콘텐트 크기도 수동 설정
+    /// </summary>
+    private void SpawnDummyCells(int count)
+    {
+        var content = m_scroller.Content;
+        for (int i = 0; i < count; i++)
+        {
+            var cell = Instantiate(m_cellPrefab, content.transform);
+            cell.gameObject.name = $"Dummy_{i}";
+            cell.gameObject.SetActive(true);
+            var text = cell.GetComponentInChildren<TextMeshProUGUI>();
+            if (text != null) text.text = $"Dummy {i}";
+        }
+
+        var isVertical = m_scroller.ScrollAxis == eScrollAxis.VERTICAL;
+        var mainSize = count * CellMainSize + (count - 1) * m_scroller.Spacing;
+        content.sizeDelta = isVertical
+            ? new Vector2(content.sizeDelta.x, mainSize)
+            : new Vector2(mainSize, content.sizeDelta.y);
+        Debug.Log($"[Test] 더미 셀 {count}개 생성 — LoadData 전 순정 ScrollRect 상태에서 드래그/러버밴드 확인");
     }
 
     #endregion
@@ -72,7 +112,17 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
 
     public RSCellRect GetCellRect(RecycleScroller scroller, int dataIndex)
     {
-        return new(m_cellSize, m_cellWidth);
+        // RSCellRect(size: 주축, crossAxisSize: 보조축)
+        return new(DeterministicInRange(dataIndex, 0, m_cellMainSizeRange),
+            DeterministicInRange(dataIndex, 1, m_cellCrossSizeRange));
+    }
+
+    /// <summary>인덱스별 고정 의사난수 — 같은 인덱스는 항상 같은 크기 (가변 크기 테스트용)</summary>
+    private static float DeterministicInRange(int dataIndex, int salt, Vector2 range)
+    {
+        if (range.y <= range.x) return range.x;
+        var t = Mathf.Abs(Mathf.Sin((dataIndex + 1) * 12.9898f + salt * 78.233f) * 43758.5453f) % 1f;
+        return Mathf.Lerp(range.x, range.y, t);
     }
 
     #endregion
@@ -86,7 +136,10 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
         go.transform.SetParent(transform);
 
         var rtf = go.AddComponent<RectTransform>();
-        rtf.sizeDelta = new Vector2(m_cellWidth, m_cellSize);
+        // 주축/보조축을 실제 x/y로 매핑 (수평: x=주축, 수직: y=주축)
+        rtf.sizeDelta = m_scroller.ScrollAxis == eScrollAxis.VERTICAL
+            ? new Vector2(CellCrossSize, CellMainSize)
+            : new Vector2(CellMainSize, CellCrossSize);
 
         var img = go.AddComponent<Image>();
         img.color = new Color(0.9f, 0.9f, 0.9f);
@@ -225,11 +278,11 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
             + $"\n  CellCount: {m_scroller.CellCount}"
             + $"\n  GroupCount: {m_scroller.GroupCount}"
             + $"\n  ScrollAxis: {m_scroller.ScrollAxis}"
-            + $"\n  RealContentSize: {m_scroller.RealContentSize}"
-            + $"\n  ShowingContentSize: {m_scroller.ShowingContentSize}"
+            + $"\n  ContentSize: {m_scroller.ContentSize}"
+            + $"\n  ScrollSize: {m_scroller.ScrollSize}"
             + $"\n  ViewportSize: {m_scroller.ViewportSize}"
-            + $"\n  RealScrollPosition: {m_scroller.RealScrollPosition}"
-            + $"\n  ShowingScrollPosition: {m_scroller.ShowingScrollPosition}"
+            + $"\n  ScrollPosition: {m_scroller.ScrollPosition}"
+            + $"\n  NormalizedScrollPosition: {m_scroller.NormalizedScrollPosition}"
             + $"\n  LoopScrollIsOn: {m_scroller.LoopScrollIsOn}"
             + $"\n  IsLoopScrollable: {m_scroller.IsLoopScrollable}";
 #if UNITY_EDITOR
@@ -281,6 +334,281 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
         if (m_scroller == null) return;
         m_scroller.MoveTo(0.5f, EaseUtil.Ease.EaseOutCubic, 0.5f);
         Debug.Log("[Test] Animated scroll to middle");
+    }
+
+    #endregion
+
+    #region Runtime GUI Test Panel
+
+    [Header("GUI Test Panel")]
+    [SerializeField] private bool m_showGuiPanel = true;
+
+    private static readonly EaseUtil.Ease[] GUI_EASES =
+    {
+        EaseUtil.Ease.Linear,
+        EaseUtil.Ease.EaseOutCubic,
+        EaseUtil.Ease.EaseInOutQuad,
+        EaseUtil.Ease.EaseOutBack,
+        EaseUtil.Ease.EaseOutElastic,
+    };
+
+    private float m_guiDuration = 0.5f;
+    private int m_guiEaseIndex = 1;
+    private string m_guiIndexText = "50";
+    private string m_guiCellCountText = "100";
+    private string m_guiDataIndexText = "0";
+    private string m_guiDataCountText = "1";
+    private bool m_guiUseVisualIndex;
+    private string m_guiSizeMinText = "100";
+    private string m_guiSizeMaxText = "100";
+    private string m_guiWidthMinText = "300";
+    private string m_guiWidthMaxText = "300";
+    private GUIStyle m_guiGroupTitleStyle;
+    private GUIStyle m_guiLabelStyle;
+    private bool m_guiPanelCollapsed;
+    private Vector2 m_guiPanelScroll;
+
+    private EaseUtil.Ease CurrentEase => GUI_EASES[m_guiEaseIndex];
+
+    private void OnGUI()
+    {
+        if (m_showGuiPanel == false || m_scroller == null) return;
+
+        m_guiGroupTitleStyle ??= new GUIStyle(GUI.skin.label)
+        {
+            fontStyle = FontStyle.Bold,
+            alignment = TextAnchor.MiddleCenter,
+        };
+        m_guiLabelStyle ??= new GUIStyle(GUI.skin.label);
+
+        // 스킨/상태에 따라 어두운 색이 섞이지 않도록 전 상태의 텍스트 색을 매 프레임 재보증
+        ForceTextColor(m_guiGroupTitleStyle, Color.white);
+        ForceTextColor(m_guiLabelStyle, Color.white);
+
+        static void ForceTextColor(GUIStyle style, Color color)
+        {
+            style.normal.textColor = color;
+            style.hover.textColor = color;
+            style.active.textColor = color;
+            style.focused.textColor = color;
+            style.onNormal.textColor = color;
+            style.onHover.textColor = color;
+            style.onActive.textColor = color;
+            style.onFocused.textColor = color;
+        }
+
+        // 숨김 상태: 화면 하단 중앙에 표시 버튼만
+        if (m_guiPanelCollapsed)
+        {
+            if (GUI.Button(new Rect((Screen.width - 130f) * 0.5f, Screen.height - 34f, 130f, 24f), "▲ 테스트 패널"))
+                m_guiPanelCollapsed = false;
+            return;
+        }
+
+        // 고정 콘텐츠 사이즈 — 화면이 좁으면 가로 스크롤
+        const float GROUPS_WIDTH = 1740f;
+        const float GROUPS_HEIGHT = 150f;
+        const float HEADER_HEIGHT = 26f;
+
+        var panelWidth = Mathf.Min(Screen.width - 20f, GROUPS_WIDTH + 24f);
+        var needScroll = panelWidth < GROUPS_WIDTH + 24f;
+        var viewHeight = GROUPS_HEIGHT + (needScroll ? 18f : 0f);
+        var panelHeight = HEADER_HEIGHT + viewHeight + 12f;
+
+        GUILayout.BeginArea(new Rect(10f, Screen.height - panelHeight - 10f, panelWidth, panelHeight), GUI.skin.box);
+
+        // 헤더: 제목(좌) + 숨김 버튼(패널 중앙)
+        GUI.Label(new Rect(8f, 4f, 120f, HEADER_HEIGHT - 4f), "테스트 패널", m_guiGroupTitleStyle);
+        if (GUI.Button(new Rect((panelWidth - 90f) * 0.5f, 3f, 90f, HEADER_HEIGHT - 5f), "▼ 숨기기"))
+        {
+            m_guiPanelCollapsed = true;
+            GUILayout.EndArea();
+            return;
+        }
+        GUILayout.Space(HEADER_HEIGHT);
+
+        m_guiPanelScroll = GUILayout.BeginScrollView(m_guiPanelScroll, false, false, GUILayout.Height(viewHeight));
+        GUILayout.BeginHorizontal(GUILayout.Width(GROUPS_WIDTH));
+
+        var hasIndex = int.TryParse(m_guiIndexText, out var guiIndex);
+
+        // ── 상태 ──
+        BeginGroup("상태", 210f);
+        GUILayout.Label($"pos  {m_scroller.ScrollPosition:F1} / {m_scroller.ContentSize:F0}", m_guiLabelStyle);
+        GUILayout.Label($"norm {m_scroller.NormalizedScrollPosition:F3}", m_guiLabelStyle);
+        GUILayout.Label($"loop {m_scroller.IsLoopScrollable}   cells {m_scroller.CellCount}", m_guiLabelStyle);
+        var currentPage = m_scroller.NearestPageIndexByScrollPos;
+        if (currentPage >= 0)
+            GUILayout.Label($"page {currentPage} / {m_scroller.PageCount}", m_guiLabelStyle);
+        EndGroup();
+
+        // ── 초기화 (LoadData 전 상태 테스트) ──
+        BeginGroup("초기화", 170f);
+#if UNITY_EDITOR
+        GUILayout.Label($"state: {m_scroller.Debug_LoadDataState}", m_guiLabelStyle);
+#endif
+        GUI.enabled = m_scroller.del == null;
+        if (GUILayout.Button("Dummy 셀 x30")) SpawnDummyCells(30);
+        if (GUILayout.Button("LoadData 시작")) StartLoadData();
+        GUI.enabled = true;
+        EndGroup();
+
+        // ── 이동 옵션 ──
+        BeginGroup("이동 옵션", 180f);
+        GUILayout.Label($"Duration {m_guiDuration:F2}s", m_guiLabelStyle);
+        m_guiDuration = GUILayout.HorizontalSlider(m_guiDuration, 0f, 2f);
+        if (GUILayout.Button($"{CurrentEase}"))
+            m_guiEaseIndex = (m_guiEaseIndex + 1) % GUI_EASES.Length;
+        EndGroup();
+
+        // ── 위치 이동 ──
+        BeginGroup("위치 이동", 230f);
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Move", m_guiLabelStyle, GUILayout.Width(42f));
+        if (GUILayout.Button("0")) m_scroller.MoveTo(0f, CurrentEase, m_guiDuration);
+        if (GUILayout.Button("0.5")) m_scroller.MoveTo(0.5f, CurrentEase, m_guiDuration);
+        if (GUILayout.Button("1")) m_scroller.MoveTo(1f, CurrentEase, m_guiDuration);
+        GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Jump", m_guiLabelStyle, GUILayout.Width(42f));
+        if (GUILayout.Button("0")) m_scroller.JumpTo(0f);
+        if (GUILayout.Button("0.5")) m_scroller.JumpTo(0.5f);
+        if (GUILayout.Button("1")) m_scroller.JumpTo(1f);
+        GUILayout.EndHorizontal();
+        EndGroup();
+
+        // ── 인덱스 이동 ──
+        BeginGroup("인덱스 이동", 230f);
+        var targetIndex = m_guiUseVisualIndex && hasIndex ? m_scroller.VisualIndexToDataIndex(guiIndex) : guiIndex;
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Index", m_guiLabelStyle, GUILayout.Width(40f));
+        m_guiIndexText = GUILayout.TextField(m_guiIndexText);
+        GUI.enabled = hasIndex;
+        if (GUILayout.Button("Jump", GUILayout.Width(50f))) m_scroller.JumpToIndex(targetIndex);
+        GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Move")) m_scroller.MoveToIndex(targetIndex, CurrentEase, m_guiDuration);
+        if (GUILayout.Button("Move(Center)")) m_scroller.MoveToIndex_ViewportCenter(targetIndex, CurrentEase, m_guiDuration);
+        GUI.enabled = true;
+        GUILayout.EndHorizontal();
+        m_guiUseVisualIndex = GUILayout.Toggle(m_guiUseVisualIndex,
+            m_guiUseVisualIndex ? " 시각(배치) 인덱스 기준" : " 데이터 인덱스 기준(기본)");
+        EndGroup();
+
+        // ── 데이터 ──
+        BeginGroup("데이터", 190f);
+
+        // 데이터 조작 전용 인덱스/개수 입력 (인덱스 이동 그룹과 별개)
+        var hasDataIndex = int.TryParse(m_guiDataIndexText, out var guiDataIndex) && guiDataIndex >= 0;
+        var hasDataCount = int.TryParse(m_guiDataCountText, out var guiDataCount) && guiDataCount > 0;
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Idx", m_guiLabelStyle, GUILayout.Width(28f));
+        m_guiDataIndexText = GUILayout.TextField(m_guiDataIndexText, GUILayout.Width(42f));
+        GUILayout.Label("Cnt", m_guiLabelStyle, GUILayout.Width(28f));
+        m_guiDataCountText = GUILayout.TextField(m_guiDataCountText, GUILayout.Width(42f));
+        GUILayout.EndHorizontal();
+
+        GUILayout.BeginHorizontal();
+        GUI.enabled = hasDataIndex && hasDataCount;
+        if (GUILayout.Button("Insert"))
+        {
+            m_cellCount += guiDataCount;
+            m_scroller.Insert(guiDataIndex, guiDataCount);
+            Debug.Log($"[Test] Insert {guiDataCount} at {guiDataIndex}, new count={m_cellCount}");
+        }
+        if (GUILayout.Button("Remove"))
+        {
+            var removeCount = Mathf.Min(guiDataCount, m_cellCount);
+            if (removeCount > 0)
+            {
+                m_cellCount -= removeCount;
+                m_scroller.Remove(guiDataIndex, removeCount);
+                Debug.Log($"[Test] Remove {removeCount} at {guiDataIndex}, new count={m_cellCount}");
+            }
+        }
+        GUI.enabled = true;
+        GUILayout.EndHorizontal();
+
+        if (GUILayout.Button("AddToEnd x10")) Add10CellsToEnd();
+
+        // 셀 수 직접 설정 + 리로드 (작은 콘텐트 폴백 등 테스트용)
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Cells", m_guiLabelStyle, GUILayout.Width(38f));
+        m_guiCellCountText = GUILayout.TextField(m_guiCellCountText);
+        GUI.enabled = int.TryParse(m_guiCellCountText, out var guiCellCount) && guiCellCount >= 0;
+        if (GUILayout.Button("Set+Reload", GUILayout.Width(80f)))
+        {
+            m_cellCount = guiCellCount;
+            ReloadData();
+        }
+        GUI.enabled = true;
+        GUILayout.EndHorizontal();
+        EndGroup();
+
+        // ── 페이지 ──
+        BeginGroup("페이지", 110f);
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("◀")) m_scroller.JumpToPrevPage();
+        if (GUILayout.Button("▶")) m_scroller.JumpToNextPage();
+        GUILayout.EndHorizontal();
+        EndGroup();
+
+        // ── 셀 크기 (가변 크기 테스트) ──
+        BeginGroup("셀 크기", 210f);
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("주축", m_guiLabelStyle, GUILayout.Width(38f));
+        m_guiSizeMinText = GUILayout.TextField(m_guiSizeMinText, GUILayout.Width(45f));
+        GUILayout.Label("~", m_guiLabelStyle, GUILayout.Width(12f));
+        m_guiSizeMaxText = GUILayout.TextField(m_guiSizeMaxText, GUILayout.Width(45f));
+        GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("보조축", m_guiLabelStyle, GUILayout.Width(38f));
+        m_guiWidthMinText = GUILayout.TextField(m_guiWidthMinText, GUILayout.Width(45f));
+        GUILayout.Label("~", m_guiLabelStyle, GUILayout.Width(12f));
+        m_guiWidthMaxText = GUILayout.TextField(m_guiWidthMaxText, GUILayout.Width(45f));
+        GUILayout.EndHorizontal();
+        var hasCellRange = float.TryParse(m_guiSizeMinText, out var sizeMin);
+        hasCellRange &= float.TryParse(m_guiSizeMaxText, out var sizeMax);
+        hasCellRange &= float.TryParse(m_guiWidthMinText, out var widthMin);
+        hasCellRange &= float.TryParse(m_guiWidthMaxText, out var widthMax);
+        hasCellRange = hasCellRange && sizeMin > 0f && widthMin > 0f;
+        GUI.enabled = hasCellRange;
+        if (GUILayout.Button("Apply+Reload"))
+        {
+            m_cellMainSizeRange = new Vector2(sizeMin, sizeMax);
+            m_cellCrossSizeRange = new Vector2(widthMin, widthMax);
+            ReloadData();
+        }
+        GUI.enabled = true;
+        EndGroup();
+
+        // ── 리로드 ──
+        BeginGroup("리로드", 160f);
+        if (GUILayout.Button(m_scroller.LoopScrollIsOn ? "Loop ON→OFF" : "Loop OFF→ON"))
+        {
+            m_scroller.LoopScrollIsOn = !m_scroller.LoopScrollIsOn;
+            ReloadData();
+        }
+        if (GUILayout.Button("Reload")) ReloadData();
+        EndGroup();
+
+        GUILayout.EndHorizontal();
+        GUILayout.EndScrollView();
+        GUILayout.EndArea();
+
+        return;
+
+        void BeginGroup(string title, float width)
+        {
+            GUILayout.BeginVertical(GUI.skin.box, GUILayout.Width(width), GUILayout.ExpandHeight(true));
+            GUILayout.Label(title, m_guiGroupTitleStyle);
+        }
+
+        void EndGroup()
+        {
+            GUILayout.FlexibleSpace();
+            GUILayout.EndVertical();
+        }
     }
 
     #endregion
