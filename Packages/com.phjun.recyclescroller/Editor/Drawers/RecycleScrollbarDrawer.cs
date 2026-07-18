@@ -17,6 +17,7 @@ public class RecycleScrollbarEditor : SelectableEditor
     private SerializedProperty m_value;
     private SerializedProperty m_size;
     private SerializedProperty m_numberOfSteps;
+    private SerializedProperty m_clickRepeatInterval;
 
     // Scrollbar - Fixed Handle Size
     private SerializedProperty m_useFixedHandleSize;
@@ -33,7 +34,6 @@ public class RecycleScrollbarEditor : SelectableEditor
 
     // Events
     private SerializedProperty m_onValueChanged;
-    private SerializedProperty m_onLoopValueChanged;
     private SerializedProperty m_onBeginDragged;
     private SerializedProperty m_onEndDragged;
 
@@ -86,6 +86,7 @@ public class RecycleScrollbarEditor : SelectableEditor
         m_value = serializedObject.FindProperty("m_value");
         m_size = serializedObject.FindProperty("m_size");
         m_numberOfSteps = serializedObject.FindProperty("m_numberOfSteps");
+        m_clickRepeatInterval = serializedObject.FindProperty("m_clickRepeatInterval");
 
         // Scrollbar - Fixed Handle Size
         m_useFixedHandleSize = serializedObject.FindProperty("m_useFixedHandleSize");
@@ -102,7 +103,6 @@ public class RecycleScrollbarEditor : SelectableEditor
 
         // Events
         m_onValueChanged = serializedObject.FindProperty("m_onValueChanged");
-        m_onLoopValueChanged = serializedObject.FindProperty("m_onLoopValueChanged");
         m_onBeginDragged = serializedObject.FindProperty("m_onBeginDragged");
         m_onEndDragged = serializedObject.FindProperty("m_onEndDragged");
     }
@@ -116,7 +116,7 @@ public class RecycleScrollbarEditor : SelectableEditor
         // 헬프 박스
         Rect helpBoxRect = GUILayoutUtility.GetRect(0, 30, GUILayout.ExpandWidth(true));
         EditorDrawerHelper.DrawCustomHelpBox(helpBoxRect,
-            "Sliding Area/Handle 오프셋과 루프 상태 업데이트가 자동으로 관리됩니다.",
+            "핸들 앵커와 루프 상태 업데이트가 자동으로 관리됩니다.\nSliding Area 배치와 핸들 마진(sizeDelta)은 자유롭게 조정할 수 있습니다.",
             MessageType.Info, Color.white);
 
         serializedObject.Update();
@@ -154,6 +154,10 @@ public class RecycleScrollbarEditor : SelectableEditor
 
     private void DrawSelectableSection()
     {
+        var selectableSummary = m_extraTransitions.arraySize > 0
+            ? $"Extra {m_extraTransitions.arraySize}개"
+            : null;
+
         EditorDrawerHelper.DrawBigCategory(ref m_foldoutSelectable, "[Selectable]", BIG_TITLE_COLOR_SELECTABLE,
             EditorDrawerHelper.BigBoxColorA, "Interactable, Transition, Navigation, Extra Transitions 설정", () =>
         {
@@ -171,7 +175,7 @@ public class RecycleScrollbarEditor : SelectableEditor
                     ExtraTransitionEntryDrawer.CopyBaseTransitionToEntry(
                         m_extraTransitions.GetArrayElementAtIndex(i));
             }
-        });
+        }, selectableSummary);
     }
 
     #endregion
@@ -180,15 +184,23 @@ public class RecycleScrollbarEditor : SelectableEditor
 
     private void DrawScrollbarSection()
     {
+        var directionName = ((RecycleScrollbar.Direction)m_direction.enumValueIndex).ToString();
+        var valueSummary = $"V {m_value.floatValue:F2} · Size {m_size.floatValue:F2}";
+        var fixedSizeSummary = m_useFixedHandleSize.boolValue
+            ? m_fixedHandleSizeMode.enumValueIndex == (int)RecycleScrollbar.FixedHandleSizeMode.Ratio
+                ? $"비율 {m_fixedHandleRatio.floatValue:F2}"
+                : $"{m_fixedHandlePixelSize.floatValue:F0}px"
+            : "Off";
+
         EditorDrawerHelper.DrawBigCategory(ref m_foldoutScrollbar, "[Scrollbar]", BIG_TITLE_COLOR_SCROLLBAR,
-            EditorDrawerHelper.BigBoxColorB, "핸들, 방향 및 값 설정", () =>
+            EditorDrawerHelper.BigBoxColorB, "핸들, 방향 및 값 설정 — Handle / Value / Fixed Handle Size", () =>
         {
             EditorDrawerHelper.DrawSmallCategory(ref m_foldoutHandle, "[Handle]",
                 EditorDrawerHelper.SMALL_TITLE_COLOR_A, EditorDrawerHelper.SmallBoxColorA, () =>
             {
                 EditorGUILayout.PropertyField(m_handleRect, new GUIContent("Handle Rect"));
                 EditorGUILayout.PropertyField(m_direction, new GUIContent("Direction"));
-            });
+            }, directionName);
 
             EditorDrawerHelper.DrawSmallCategory(ref m_foldoutValue, "[Value]",
                 EditorDrawerHelper.SMALL_TITLE_COLOR_B, EditorDrawerHelper.SmallBoxColorB, () =>
@@ -196,7 +208,8 @@ public class RecycleScrollbarEditor : SelectableEditor
                 EditorGUILayout.PropertyField(m_value, new GUIContent("Value"));
                 EditorGUILayout.PropertyField(m_size, new GUIContent("Size"));
                 EditorGUILayout.PropertyField(m_numberOfSteps, new GUIContent("Number Of Steps"));
-            });
+                EditorGUILayout.PropertyField(m_clickRepeatInterval, new GUIContent("Click Repeat Interval"));
+            }, valueSummary);
 
             EditorDrawerHelper.DrawSmallCategory(ref m_foldoutFixedHandleSize, "[Fixed Handle Size]",
                 EditorDrawerHelper.SMALL_TITLE_COLOR_A, EditorDrawerHelper.SmallBoxColorA, () =>
@@ -216,8 +229,8 @@ public class RecycleScrollbarEditor : SelectableEditor
                     else
                         EditorGUILayout.PropertyField(m_fixedHandlePixelSize, new GUIContent("Min Pixel Size", "핸들 최소 픽셀 크기"));
                 }
-            });
-        });
+            }, fixedSizeSummary);
+        }, directionName);
     }
 
     #endregion
@@ -226,8 +239,12 @@ public class RecycleScrollbarEditor : SelectableEditor
 
     private void DrawLoopScrollbarSection()
     {
+        var subHandleCount = (m_leftHandle.objectReferenceValue != null ? 1 : 0)
+            + (m_rightHandle.objectReferenceValue != null ? 1 : 0);
+        var referencesSummary = $"Sub Handle {subHandleCount}/2";
+
         EditorDrawerHelper.DrawBigCategory(ref m_foldoutLoopScrollbar, "[Loop Scrollbar]", BIG_TITLE_COLOR_LOOP,
-            EditorDrawerHelper.BigBoxColorA, "루프 스크롤 전용 레퍼런스 (자동 관리, 읽기 전용)", () =>
+            EditorDrawerHelper.BigBoxColorA, "루프 스크롤 전용 레퍼런스 (자동 관리, 읽기 전용) — References", () =>
         {
             EditorDrawerHelper.DrawSmallCategory(ref m_foldoutReferences, "[References]",
                 EditorDrawerHelper.SMALL_TITLE_COLOR_A, EditorDrawerHelper.SmallBoxColorA, () =>
@@ -242,33 +259,38 @@ public class RecycleScrollbarEditor : SelectableEditor
                 EditorGUILayout.PropertyField(m_leftHandle, new GUIContent("Sub Handle 0"));
                 EditorGUILayout.PropertyField(m_rightHandle, new GUIContent("Sub Handle 1"));
                 EditorGUI.EndDisabledGroup();
-            });
-        });
+            }, referencesSummary);
+        }, referencesSummary);
     }
 
     #endregion
 
     #region Draw - Events
 
+    private static int PersistentListenerCount(SerializedProperty unityEventProp)
+        => unityEventProp.FindPropertyRelative("m_PersistentCalls.m_Calls").arraySize;
+
     private void DrawEventsSection()
     {
+        var valueChangedCount = PersistentListenerCount(m_onValueChanged);
+        var dragEventCount = PersistentListenerCount(m_onBeginDragged) + PersistentListenerCount(m_onEndDragged);
+
         EditorDrawerHelper.DrawBigCategory(ref m_foldoutEvents, "[Events]", BIG_TITLE_COLOR_EVENTS,
-            EditorDrawerHelper.BigBoxColorB, "스크롤바 이벤트 콜백 설정", () =>
+            EditorDrawerHelper.BigBoxColorB, "스크롤바 이벤트 콜백 설정 — Scrollbar Events / Loop Events", () =>
         {
             EditorDrawerHelper.DrawSmallCategory(ref m_foldoutScrollbarEvents, "[Scrollbar Events]",
                 EditorDrawerHelper.SMALL_TITLE_COLOR_A, EditorDrawerHelper.SmallBoxColorA, () =>
             {
                 EditorGUILayout.PropertyField(m_onValueChanged, new GUIContent("On Value Changed (float)"));
-            });
+            }, $"리스너 {valueChangedCount}");
 
             EditorDrawerHelper.DrawSmallCategory(ref m_foldoutLoopEvents, "[Loop Events]",
                 EditorDrawerHelper.SMALL_TITLE_COLOR_B, EditorDrawerHelper.SmallBoxColorB, () =>
             {
-                EditorGUILayout.PropertyField(m_onLoopValueChanged, new GUIContent("On Loop Value Changed"));
                 EditorGUILayout.PropertyField(m_onBeginDragged, new GUIContent("On Begin Dragged"));
                 EditorGUILayout.PropertyField(m_onEndDragged, new GUIContent("On End Dragged"));
-            });
-        });
+            }, $"리스너 {dragEventCount}");
+        }, $"리스너 {valueChangedCount + dragEventCount}");
     }
 
     #endregion

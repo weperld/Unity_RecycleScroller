@@ -195,8 +195,15 @@ public class RecycleScrollerEditor : Editor
 
     private void DrawScrollSection(RecycleScroller scroller)
     {
+        var axisName = ((eScrollAxis)m_scrollAxis.enumValueIndex).ToString();
+        var movementName = ((UnityEngine.UI.ScrollRect.MovementType)m_movementType.enumValueIndex).ToString();
+        var scrollRectSummary = movementName + (m_inertia.boolValue ? " · Inertia" : "");
+        var scrollbarSummary = m_useScrollbar.boolValue
+            ? ((UnityEngine.UI.ScrollRect.ScrollbarVisibility)m_scrollbarVisibility.enumValueIndex).ToString()
+            : "Off";
+
         EditorDrawerHelper.DrawBigCategory(ref m_foldoutScroll, "[Scroll]", BIG_TITLE_COLOR_SCROLL,
-            EditorDrawerHelper.BigBoxColorA, "스크롤 축 및 스크롤바 설정", () =>
+            EditorDrawerHelper.BigBoxColorA, "스크롤 축 및 스크롤바 설정 — Scroll Axis / ScrollRect Settings / Scrollbar", () =>
         {
             EditorDrawerHelper.DrawSmallCategory(ref m_foldoutScrollAxis, "[Scroll Axis]",
                 EditorDrawerHelper.SMALL_TITLE_COLOR_A, EditorDrawerHelper.SmallBoxColorA, () =>
@@ -204,7 +211,7 @@ public class RecycleScrollerEditor : Editor
                 EditorGUI.BeginDisabledGroup(IsAppPlaying);
                 EditorGUILayout.PropertyField(m_scrollAxis);
                 EditorGUI.EndDisabledGroup();
-            });
+            }, axisName);
 
             EditorDrawerHelper.DrawSmallCategory(ref m_foldoutScrollRectSettings, "[ScrollRect Settings]",
                 EditorDrawerHelper.SMALL_TITLE_COLOR_B, EditorDrawerHelper.SmallBoxColorB, () =>
@@ -215,14 +222,19 @@ public class RecycleScrollerEditor : Editor
                 EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.PropertyField(m_movementType, new GUIContent("Movement Type"));
-                DrawOverwriteLabel(scroller.Debug_IsMovementTypeOverwritten, scroller.Debug_OverwrittenMovementType);
+                var currentMovementType = scroller.Debug_CurrentMovementType;
+                DrawOverwriteLabel(
+                    currentMovementType != (UnityEngine.UI.ScrollRect.MovementType)m_movementType.enumValueIndex,
+                    currentMovementType);
                 if (m_movementType.enumValueIndex == (int)UnityEngine.UI.ScrollRect.MovementType.Elastic)
                     EditorGUILayout.PropertyField(m_elasticity);
                 EditorGUILayout.PropertyField(m_inertia);
+                var currentUseInertia = scroller.Debug_CurrentUseInertia;
+                DrawOverwriteLabel(currentUseInertia != m_inertia.boolValue, currentUseInertia);
                 if (m_inertia.boolValue)
                     EditorGUILayout.PropertyField(m_decelerationRate, new GUIContent("Deceleration Rate"));
                 EditorGUILayout.PropertyField(m_scrollSensitivity, new GUIContent("Scroll Sensitivity"));
-            });
+            }, scrollRectSummary);
 
             EditorDrawerHelper.DrawSmallCategory(ref m_foldoutScrollbar, "[Scrollbar]",
                 EditorDrawerHelper.SMALL_TITLE_COLOR_A, EditorDrawerHelper.SmallBoxColorA, () =>
@@ -241,23 +253,30 @@ public class RecycleScrollerEditor : Editor
                         MessageType.Info, Color.white);
                     EditorGUI.EndDisabledGroup();
                 }
-            });
-        });
+            }, scrollbarSummary);
+        }, $"{axisName} · {movementName}");
     }
 
     #endregion
 
     #region Draw - Layout
 
+    private string CellAlignmentSummary =>
+        ((TextAnchor)m_childAlignment.enumValueIndex) + (m_reverse.boolValue ? " · Reverse" : "");
+
+    private string CellGroupSummary => m_fixedCellCountInGroup.boolValue
+        ? $"고정 {m_fixedCellCount.intValue}개"
+        : "유동";
+
     private void DrawLayoutSection(RecycleScroller scroller)
     {
         EditorDrawerHelper.DrawBigCategory(ref m_foldoutLayout, "[Layout]", BIG_TITLE_COLOR_LAYOUT,
-            EditorDrawerHelper.BigBoxColorB, "셀 정렬, 그룹 배치 및 콘텐트 크기 설정", () =>
+            EditorDrawerHelper.BigBoxColorB, "셀 정렬, 그룹 배치 및 콘텐트 크기 설정 — Cell Alignment / Cell Group / Content Fit", () =>
         {
             DrawCellAlignmentSubSection(scroller);
             DrawCellGroupSubSection(scroller);
             DrawContentFitSubSection();
-        });
+        }, $"{CellAlignmentSummary} · {CellGroupSummary}");
     }
 
     private void DrawCellAlignmentSubSection(RecycleScroller scroller)
@@ -275,7 +294,7 @@ public class RecycleScrollerEditor : Editor
             EditorGUILayout.PropertyField(m_useChildScale);
             EditorGUILayout.PropertyField(m_childForceExpand);
             EditorGUI.EndDisabledGroup();
-        });
+        }, CellAlignmentSummary);
     }
 
     private void DrawCellGroupSubSection(RecycleScroller scroller)
@@ -330,7 +349,7 @@ public class RecycleScrollerEditor : Editor
                 EditorGUILayout.PropertyField(m_spacingInGroup);
                 EditorGUI.EndDisabledGroup();
             }
-        });
+        }, CellGroupSummary);
     }
 
     private void DrawContentFitSubSection()
@@ -341,7 +360,7 @@ public class RecycleScrollerEditor : Editor
             EditorGUI.BeginDisabledGroup(IsAppPlaying);
             EditorGUILayout.PropertyField(m_fitContentToViewport);
             EditorGUI.EndDisabledGroup();
-        });
+        }, m_fitContentToViewport.boolValue ? "On" : "Off");
     }
 
     #endregion
@@ -350,8 +369,14 @@ public class RecycleScrollerEditor : Editor
 
     private void DrawFeaturesSection()
     {
+        var loopSummary = m_loopScroll.boolValue ? "On" : "Off";
+        var usePaging = m_pagingData.FindPropertyRelative("usePaging").boolValue;
+        var pagingSummary = usePaging
+            ? $"On · 그룹 {m_pagingData.FindPropertyRelative("countPerPage").intValue}/페이지"
+            : "Off";
+
         EditorDrawerHelper.DrawBigCategory(ref m_foldoutFeatures, "[Features]", BIG_TITLE_COLOR_FEATURES,
-            EditorDrawerHelper.BigBoxColorA, "루프 스크롤 및 페이징 기능 설정", () =>
+            EditorDrawerHelper.BigBoxColorA, "루프 스크롤 및 페이징 기능 설정 — Loop Scroll / Paging", () =>
         {
             EditorDrawerHelper.DrawSmallCategory(ref m_foldoutLoopScroll, "[Loop Scroll]",
                 EditorDrawerHelper.SMALL_TITLE_COLOR_A, EditorDrawerHelper.SmallBoxColorA, () =>
@@ -359,14 +384,14 @@ public class RecycleScrollerEditor : Editor
                 EditorGUI.BeginDisabledGroup(IsAppPlaying);
                 EditorGUILayout.PropertyField(m_loopScroll);
                 EditorGUI.EndDisabledGroup();
-            });
+            }, loopSummary);
 
             EditorDrawerHelper.DrawSmallCategory(ref m_foldoutPaging, "[Paging]",
                 EditorDrawerHelper.SMALL_TITLE_COLOR_B, EditorDrawerHelper.SmallBoxColorB, () =>
             {
                 EditorGUILayout.PropertyField(m_pagingData, new GUIContent("Use Page Configs"));
-            });
-        });
+            }, pagingSummary);
+        }, $"Loop {loopSummary} · Paging {(usePaging ? "On" : "Off")}");
     }
 
     #endregion
@@ -375,8 +400,10 @@ public class RecycleScrollerEditor : Editor
 
     private void DrawAdvancedSection()
     {
+        var poolSummary = $"풀 {m_maxPoolSizePerType.intValue}";
+
         EditorDrawerHelper.DrawBigCategory(ref m_foldoutAdvanced, "[Advanced]", BIG_TITLE_COLOR_ADVANCED,
-            EditorDrawerHelper.BigBoxColorB, "오브젝트 풀 및 에디터 도구 설정", () =>
+            EditorDrawerHelper.BigBoxColorB, "오브젝트 풀 및 에디터 도구 설정 — Pool Management / Example Layout", () =>
         {
             EditorDrawerHelper.DrawSmallCategory(ref m_foldoutPoolManagement, "[Pool Management]",
                 EditorDrawerHelper.SMALL_TITLE_COLOR_A, EditorDrawerHelper.SmallBoxColorA, () =>
@@ -384,14 +411,14 @@ public class RecycleScrollerEditor : Editor
                 EditorGUI.BeginDisabledGroup(IsAppPlaying);
                 EditorGUILayout.PropertyField(m_maxPoolSizePerType, new GUIContent("Max Pool Size Per Type"));
                 EditorGUI.EndDisabledGroup();
-            });
+            }, m_maxPoolSizePerType.intValue.ToString());
 
             EditorDrawerHelper.DrawSmallCategory(ref m_foldoutExampleLayout, "[Example Layout]",
                 EditorDrawerHelper.SMALL_TITLE_COLOR_B, EditorDrawerHelper.SmallBoxColorB, () =>
             {
                 EditorGUILayout.PropertyField(m_exampleLayoutGroups);
-            });
-        });
+            }, $"{m_exampleLayoutGroups.arraySize}개");
+        }, poolSummary);
     }
 
     #endregion
@@ -409,10 +436,10 @@ public class RecycleScrollerEditor : Editor
         EditorGUILayout.IntField("Active Cells", scroller.Debug_ActiveCellCount);
         EditorGUILayout.IntField("Active Groups", scroller.Debug_ActiveGroupCount);
         EditorGUILayout.IntField("Pooled Cells", scroller.Debug_PooledCellCount);
-        EditorGUILayout.FloatField("Scroll Position", scroller.ShowingNormalizedScrollPosition);
+        EditorGUILayout.FloatField("Scroll Position", scroller.NormalizedScrollPosition);
 
         var pageIndex = scroller.NearestPageIndexByScrollPos;
-        var pageCount = scroller.ShowingPageCount;
+        var pageCount = scroller.PageCount;
         EditorGUILayout.TextField("Current Page", pageIndex >= 0 ? $"{pageIndex} / {pageCount}" : "N/A");
 
         EditorGUILayout.EnumPopup("Load Data State", scroller.Debug_LoadDataState);

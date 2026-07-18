@@ -310,8 +310,25 @@ public static partial class EditorDrawerHelper
         }
     }
 
+    private static GUIStyle m_collapsedSummaryStyle;
+    private static GUIStyle CollapsedSummaryStyle =>
+        m_collapsedSummaryStyle ??= new GUIStyle(EditorStyles.miniLabel)
+        {
+            alignment = TextAnchor.MiddleRight,
+        };
+
+    /// <summary>접힌 헤더 우측에 현재 설정 요약 표시</summary>
+    private static void DrawCollapsedSummary(Rect headerRect, bool foldout, string collapsedSummary)
+    {
+        if (foldout || string.IsNullOrEmpty(collapsedSummary)) return;
+
+        var summaryRect = headerRect;
+        summaryRect.xMax -= 6f;
+        EditorGUI.LabelField(summaryRect, collapsedSummary, CollapsedSummaryStyle);
+    }
+
     public static void DrawBigCategory(ref bool foldout, string title, string hexColor,
-        Color boxColor, string subtitle, Action drawContent)
+        Color boxColor, string subtitle, Action drawContent, string collapsedSummary = null)
     {
         var rect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
         if (Event.current.type == EventType.Repaint)
@@ -319,9 +336,11 @@ public static partial class EditorDrawerHelper
 
         foldout = EditorGUILayout.Foldout(foldout,
             $"<color={hexColor}>{title}</color>", true, BigFoldoutStyle);
+        DrawCollapsedSummary(GUILayoutUtility.GetLastRect(), foldout, collapsedSummary);
+        // 섹션 설명은 접힘 여부와 무관하게 항상 표시
+        EditorGUILayout.LabelField($"↳ {subtitle}", EditorStyles.miniLabel);
         if (foldout)
         {
-            EditorGUILayout.LabelField($"↳ {subtitle}", EditorStyles.miniLabel);
             EditorGUI.indentLevel++;
             drawContent();
             EditorGUI.indentLevel--;
@@ -331,7 +350,7 @@ public static partial class EditorDrawerHelper
     }
 
     public static void DrawSmallCategory(ref bool foldout, string title, string hexColor,
-        Color boxColor, Action drawContent)
+        Color boxColor, Action drawContent, string collapsedSummary = null)
     {
         var subRect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
         if (Event.current.type == EventType.Repaint)
@@ -341,6 +360,7 @@ public static partial class EditorDrawerHelper
         EditorGUI.DrawRect(controlRect, boxColor);
         foldout = EditorGUI.Foldout(controlRect, foldout,
             $"<color={hexColor}>{title}</color>", true, SmallFoldoutStyle);
+        DrawCollapsedSummary(controlRect, foldout, collapsedSummary);
 
         if (foldout)
         {
