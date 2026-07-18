@@ -46,13 +46,6 @@ namespace RecycleScroll
         /// 비루프: Clamp01 + Round. 루프: 클램프 없음.
         /// </summary>
         float ClampClickValue(float newValue);
-
-        /// <summary>
-        /// OnLoopValueChanged 이벤트를 위한 값 변환.
-        /// 비루프: (val, val). 루프: 좌표 변환 후 (real, showing).
-        /// </summary>
-        (float real, float showing) ConvertValueForEvent(
-            float val, IRecycleScrollbarDelegate del);
     }
 
     /// <summary>

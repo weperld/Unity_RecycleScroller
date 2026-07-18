@@ -41,8 +41,8 @@ namespace RecycleScroll
             float movementScale;
             if (del != null)
             {
-                float naturalSize = del.ShowingSize > 0f
-                    ? del.ViewportSize / del.ShowingSize
+                float naturalSize = del.ContentSize > 0f
+                    ? del.ViewportSize / del.ContentSize
                     : displaySize;
                 movementScale = 1f - naturalSize;
             }
@@ -137,24 +137,6 @@ namespace RecycleScroll
         {
             // 루프 모드: 클램프하지 않음 (값이 [0,1] 범위를 넘을 수 있음)
             return newValue;
-        }
-
-        public (float real, float showing) ConvertValueForEvent(
-            float val, IRecycleScrollbarDelegate del)
-        {
-            if (del == null || !del.IsLoopScrollable)
-                return (val, val);
-
-            // val은 showing-normalized position
-            float showingScrollSize = del.ShowingSize - del.ViewportSize;
-            if (showingScrollSize <= 0f)
-                return (val, val);
-
-            float showingPos = val * showingScrollSize;
-            float realPos = del.ConvertShowToReal(showingPos);
-            float realScrollSize = del.RealSize - del.ViewportSize;
-            float realNormalized = realScrollSize > 0f ? realPos / realScrollSize : 0f;
-            return (realNormalized, val);
         }
     }
 }

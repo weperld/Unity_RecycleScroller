@@ -116,11 +116,5 @@ namespace RecycleScroll
             newValue = Mathf.Clamp01(newValue);
             return Mathf.Round(newValue * 10000f) / 10000f;
         }
-
-        public (float real, float showing) ConvertValueForEvent(
-            float val, IRecycleScrollbarDelegate del)
-        {
-            return (val, val);
-        }
     }
 }

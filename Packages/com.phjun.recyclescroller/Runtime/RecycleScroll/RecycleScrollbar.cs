@@ -44,12 +44,6 @@ namespace RecycleScroll
         [Serializable]
         public class ScrollEvent : UnityEvent<float> { }
 
-        /// <summary>
-        /// normalized real value, normalized showing value
-        /// </summary>
-        [Serializable]
-        public class LoopScrollEvent : UnityEvent<float, float> { }
-
         [Serializable]
         public class BeginDragEvent : UnityEvent<PointerEventData> { }
 
@@ -72,6 +66,13 @@ namespace RecycleScroll
         [Range(0, 11)]
         [SerializeField] private int m_numberOfSteps = 0;
 
+        /// <summary>
+        /// 트랙 클릭 시 반복 이동 간격(초, unscaled). 프레임레이트와 무관한 속도 보장.
+        /// 0이면 1.x 동작(매 프레임 반복 — 프레임레이트에 따라 체감 속도가 달라짐)
+        /// </summary>
+        [Min(0f)]
+        [SerializeField] private float m_clickRepeatInterval = 0.01f;
+
         [Space(6)]
         [SerializeField] private ScrollEvent m_onValueChanged = new ScrollEvent();
 
@@ -92,7 +93,6 @@ namespace RecycleScroll
 
         #region Serialized Fields - Loop Scrollbar
 
-        [SerializeField] private LoopScrollEvent m_onLoopValueChanged = new();
         [SerializeField] private BeginDragEvent m_onBeginDragged = new();
         [SerializeField] private EndDragEvent m_onEndDragged = new();
 
@@ -107,15 +107,6 @@ namespace RecycleScroll
 
         #endregion
 
-        #region Editor Fields
-
-#if UNITY_EDITOR
-        [SerializeField] private bool m_loopScrollSettingFoldout = false;
-        [SerializeField] private bool m_eventFoldout = false;
-#endif
-
-        #endregion
-
         #region Internal Fields
 
         private RectTransform m_containerRect;
@@ -127,6 +118,7 @@ namespace RecycleScroll
         private Coroutine m_pointerDownRepeat;
         private bool m_isPointerDownAndNotDragging = false;
         private bool m_delayedUpdateVisuals = false;
+        private bool m_warnedDegenerateContainer = false;
 
         private IRecycleScrollbarDelegate m_del;
         private IScrollbarMode m_scrollbarMode;
@@ -242,10 +234,6 @@ namespace RecycleScroll
 
         #region Properties - Loop Scrollbar
 
-        /// <summary>
-        /// normalized real value, normalized showing value
-        /// </summary>
-        public LoopScrollEvent OnLoopValueChanged => m_onLoopValueChanged;
         public BeginDragEvent OnBeginDragged => m_onBeginDragged;
         public EndDragEvent OnEndDragged => m_onEndDragged;
 
@@ -377,25 +365,10 @@ namespace RecycleScroll
 
             UpdateVisuals();
             if (sendCallback)
-            {
                 m_onValueChanged.Invoke(Value);
-                UpdateLoopScrollState(Value);
-            }
         }
 
         private void SetWithSendCallback(float input) => Set(input, true);
-
-        /// <summary>
-        /// value 변경 시 루프 스크롤바 관련 시각적 업데이트 및 OnLoopValueChanged 이벤트를 발사합니다.
-        /// Set()에서 sendCallback=true일 때 자동으로 호출되므로 인스펙터 등록이 필요하지 않습니다.
-        /// </summary>
-        private void UpdateLoopScrollState(float val)
-        {
-            if (!Application.isPlaying) return;
-
-            var (real, showing) = ScrollbarMode.ConvertValueForEvent(val, m_del);
-            OnLoopValueChanged.Invoke(real, showing);
-        }
 
         public virtual void SetValueWithoutNotify(float input)
         {
@@ -404,8 +377,8 @@ namespace RecycleScroll
 
         /// <summary>
         /// 핸들의 앵커 위치를 value와 size 기반으로 갱신.
-        /// Sliding Area와 Handle의 오프셋을 DrivenRectTransformTracker로 자동 강제하여
-        /// 수동으로 Left/Right/Top/Bottom을 0으로 설정할 필요가 없습니다.
+        /// 순정 Scrollbar와 동일하게 핸들의 Anchors만 점유합니다.
+        /// (Sliding Area 배치와 핸들 마진(sizeDelta/anchoredPosition)은 에디터에서 자유 조정 가능)
         ///
         /// 비루프 모드: Elastic 오버슈트 시 핸들 사이즈를 동적 축소.
         /// 루프 모드: 메인 핸들이 [0,1] 경계를 넘을 때 서브 핸들 사이즈를 동적 설정.
@@ -420,21 +393,9 @@ namespace RecycleScroll
 
             if (m_containerRect != null)
             {
-                // Sliding Area(HandleContainerRect) 오프셋 강제: 부모(LoopSlidingArea)를 정확히 채움
-                m_tracker.Add(this, m_containerRect,
-                    DrivenTransformProperties.Anchors
-                    | DrivenTransformProperties.AnchoredPosition
-                    | DrivenTransformProperties.SizeDelta);
-                m_containerRect.anchorMin = Vector2.zero;
-                m_containerRect.anchorMax = Vector2.one;
-                m_containerRect.anchoredPosition = Vector2.zero;
-                m_containerRect.sizeDelta = Vector2.zero;
+                WarnIfDegenerateContainer();
 
-                // Handle 오프셋 강제 + 앵커 기반 위치/크기 설정
-                m_tracker.Add(this, m_handleRect,
-                    DrivenTransformProperties.Anchors
-                    | DrivenTransformProperties.AnchoredPosition
-                    | DrivenTransformProperties.SizeDelta);
+                m_tracker.Add(this, m_handleRect, DrivenTransformProperties.Anchors);
 
                 // 모드별 추가 트래커 등록 (루프 모드: 서브 핸들)
                 ScrollbarMode.RegisterAdditionalTrackers(
@@ -451,9 +412,27 @@ namespace RecycleScroll
 
                 m_handleRect.anchorMin = result.AnchorMin;
                 m_handleRect.anchorMax = result.AnchorMax;
-                m_handleRect.anchoredPosition = Vector2.zero;
-                m_handleRect.sizeDelta = Vector2.zero;
             }
+        }
+
+        /// <summary>
+        /// 2.0.0 마이그레이션 안전장치: 과거에는 Sliding Area를 full-stretch로 강제했으나
+        /// 이제 직렬화 값을 그대로 사용하므로, 주축 크기 0인 퇴화 상태를 1회 경고합니다.
+        /// </summary>
+        private void WarnIfDegenerateContainer()
+        {
+            if (m_warnedDegenerateContainer) return;
+
+            float mainSize = _Axis == Axis.Horizontal
+                ? m_containerRect.rect.width
+                : m_containerRect.rect.height;
+            if (mainSize > 0.01f) return;
+
+            m_warnedDegenerateContainer = true;
+            Debug.LogWarning(
+                $"[RecycleScrollbar] Sliding Area({m_containerRect.name})의 주축 크기가 0입니다. " +
+                "2.0.0부터 Sliding Area RectTransform을 강제하지 않으므로 " +
+                "anchors를 full-stretch (0,0)-(1,1), offset 0으로 설정해 주세요.", this);
         }
 
         private bool MayDrag(PointerEventData eventData)
@@ -533,11 +512,23 @@ namespace RecycleScroll
                     float axisMin = axis == 0 ? handleLocalRect.xMin : handleLocalRect.yMin;
                     float axisMax = axis == 0 ? handleLocalRect.xMax : handleLocalRect.yMax;
 
-                    // 주축 기준으로 핸들 범위 밖일 때만 스텝 (보조축 무시)
-                    if (axisCoordinate < axisMin || axisCoordinate > axisMax)
+                    // 주축 기준으로 메인 핸들 범위 밖이면서,
+                    // 루프 wrap 서브 핸들 위도 아닐 때만 스텝 (서브 핸들 = 핸들의 일부로 취급)
+                    if ((axisCoordinate < axisMin || axisCoordinate > axisMax)
+                        && IsInsideOnMainAxis(screenPosition, camera, m_leftHandle) == false
+                        && IsInsideOnMainAxis(screenPosition, camera, m_rightHandle) == false)
                     {
-                        float change = axisCoordinate < 0 ? Size : -Size;
-                        float newValue = Value + (ReverseValue ? change : -change);
+                        float newValue;
+                        if (TryGetLoopCircularStep(screenPosition, camera, out var loopStep))
+                        {
+                            // 루프: 원형 트랙에서 핸들 세그먼트 → 클릭 지점 최단 방향으로 스텝
+                            newValue = Value + loopStep;
+                        }
+                        else
+                        {
+                            float change = axisCoordinate < 0 ? Size : -Size;
+                            newValue = Value + (ReverseValue ? change : -change);
+                        }
 
                         newValue = ScrollbarMode.ClampClickValue(newValue);
 
@@ -545,16 +536,76 @@ namespace RecycleScroll
                     }
                 }
 
-                yield return new WaitForEndOfFrame();
+                if (m_clickRepeatInterval > 0f)
+                    yield return new WaitForSecondsRealtime(m_clickRepeatInterval);
+                else
+                    yield return new WaitForEndOfFrame();
             }
 
             StopCoroutine(m_pointerDownRepeat);
         }
 
+        /// <summary>트랙 클릭 반복 이동 간격(초, unscaled). 0이면 매 프레임 반복</summary>
+        public float ClickRepeatInterval
+        {
+            get => m_clickRepeatInterval;
+            set => m_clickRepeatInterval = Mathf.Max(0f, value);
+        }
+
+        /// <summary>
+        /// 루프 모드에서 트랙 클릭의 스텝 방향을 원형 최단 경로 기준으로 계산.
+        /// wrap 상태에서는 핸들이 트랙 양 끝에 걸친 원형 세그먼트이므로,
+        /// 메인 핸들 기준 좌/우 판정 대신 세그먼트 중심 → 클릭 지점의 최단 방향을 사용
+        /// </summary>
+        private bool TryGetLoopCircularStep(Vector2 screenPosition, Camera camera, out float step)
+        {
+            step = 0f;
+            if (IsLoopMode == false || m_containerRect == null || m_del == null) return false;
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                m_containerRect, screenPosition, camera, out var localPos) == false) return false;
+
+            int axis = (int)_Axis;
+            var containerLocalRect = m_containerRect.rect;
+            float clickT = axis == 0
+                ? Mathf.InverseLerp(containerLocalRect.xMin, containerLocalRect.xMax, localPos.x)
+                : Mathf.InverseLerp(containerLocalRect.yMin, containerLocalRect.yMax, localPos.y);
+            if (ReverseValue) clickT = 1f - clickT;
+
+            // 트랙 정규화 좌표(주기 1)에서 핸들 세그먼트 = [value*movementScale, +Size]
+            float naturalSize = m_del.ContentSize > 0f ? m_del.ViewportSize / m_del.ContentSize : Size;
+            float movementScale = 1f - naturalSize;
+            float segmentCenter = Mathf.Repeat(Value * movementScale, 1f) + Size * 0.5f;
+            float delta = Mathf.Repeat(clickT - segmentCenter + 0.5f, 1f) - 0.5f;
+
+            step = delta > 0f ? Size : -Size;
+            return true;
+        }
+
+        /// <summary>스크린 좌표가 대상 렉트의 주축 범위 안에 있는지 (비활성 렉트는 false)</summary>
+        private bool IsInsideOnMainAxis(Vector2 screenPosition, Camera camera, RectTransform target)
+        {
+            if (target == false || target.gameObject.activeInHierarchy == false) return false;
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                target, screenPosition, camera, out var localPos) == false) return false;
+
+            int axis = (int)_Axis;
+            float coordinate = axis == 0 ? localPos.x : localPos.y;
+            Rect localRect = target.rect;
+            float min = axis == 0 ? localRect.xMin : localRect.yMin;
+            float max = axis == 0 ? localRect.xMax : localRect.yMax;
+            return coordinate >= min && coordinate <= max;
+        }
+
         public override void OnPointerUp(PointerEventData eventData)
         {
             base.OnPointerUp(eventData);
+
+            // 드래그 없이 눌렀다 뗀 경우(트랙 클릭 등)도 드래그 종료와 동일한 후처리
+            // (스크롤러의 페이지 스냅 등이 OnEndDragged를 통해 동작)
+            var wasPressWithoutDrag = m_isPointerDownAndNotDragging;
             m_isPointerDownAndNotDragging = false;
+            if (wasPressWithoutDrag && Application.isPlaying)
+                OnEndDragged.Invoke(eventData);
         }
 
         public virtual void OnInitializePotentialDrag(PointerEventData eventData)
@@ -689,8 +740,9 @@ namespace RecycleScroll
                 aMax[(int)_Axis] = startWrap;
                 m_leftHandle.anchorMin = aMin;
                 m_leftHandle.anchorMax = aMax;
-                m_leftHandle.anchoredPosition = Vector2.zero;
-                m_leftHandle.sizeDelta = Vector2.zero;
+                // 메인 핸들의 마진(sizeDelta/anchoredPosition)을 복사해 wrap 이음새의 시각 일치 유지
+                m_leftHandle.anchoredPosition = m_handleRect.anchoredPosition;
+                m_leftHandle.sizeDelta = m_handleRect.sizeDelta;
                 m_leftHandle.gameObject.SetActive(startWrap > 0.001f);
             }
 
@@ -702,8 +754,8 @@ namespace RecycleScroll
                 aMax[(int)_Axis] = 1f;
                 m_rightHandle.anchorMin = aMin;
                 m_rightHandle.anchorMax = aMax;
-                m_rightHandle.anchoredPosition = Vector2.zero;
-                m_rightHandle.sizeDelta = Vector2.zero;
+                m_rightHandle.anchoredPosition = m_handleRect.anchoredPosition;
+                m_rightHandle.sizeDelta = m_handleRect.sizeDelta;
                 m_rightHandle.gameObject.SetActive(endWrap > 0.001f);
             }
         }
@@ -739,8 +791,8 @@ namespace RecycleScroll
             subHandle.anchorMin = aMin;
             subHandle.anchorMax = aMax;
             subHandle.pivot = new Vector2(0.5f, 0.5f);
-            subHandle.anchoredPosition = Vector2.zero;
-            subHandle.sizeDelta = Vector2.zero;
+            subHandle.anchoredPosition = m_handleRect != null ? m_handleRect.anchoredPosition : Vector2.zero;
+            subHandle.sizeDelta = m_handleRect != null ? m_handleRect.sizeDelta : Vector2.zero;
         }
 
         private void ResetSubHandlesPosition()
