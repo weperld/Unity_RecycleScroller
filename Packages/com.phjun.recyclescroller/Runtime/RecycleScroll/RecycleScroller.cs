@@ -51,8 +51,14 @@ namespace RecycleScroll
             }
         }
 
-        private readonly OverwriteValue<ScrollRect.MovementType> m_overwriteMovementType = new();
-        private ScrollRect.MovementType CurrentMovementType => m_overwriteMovementType.GetValue(m_movementType);
+        /// <summary>
+        /// 루프 모드는 경계 클램프가 없어야 하므로 Unrestricted로 파생.
+        /// LoadData 전에는 루프 설정과 무관하게 인스펙터 값 그대로 (순정 ScrollRect 동작 보존)
+        /// </summary>
+        private ScrollRect.MovementType CurrentMovementType =>
+            m_isInitialized && m_scrollerMode.IsLoop
+                ? ScrollRect.MovementType.Unrestricted
+                : m_movementType;
 
         #endregion
 
@@ -79,7 +85,7 @@ namespace RecycleScroll
 
         #region Page
 
-        private int RealPageCount
+        public int PageCount
         {
             get
             {
@@ -88,15 +94,13 @@ namespace RecycleScroll
                 return m_dp_pagePos.Count;
             }
         }
-        public int ShowingPageCount => RealPageCount - m_scrollerMode.FrontAdditionalPageCount - m_scrollerMode.BackAdditionalPageCount;
 
         private float PagePivotPosInViewport => m_pagingData.ScrollViewPivot * ViewportSize;
-        private float PagePivotPosInScrollRect => PagePivotPosInViewport + RealScrollPosition;
 
         /// <summary>
         /// 현재 스크롤 위치(페이지 피벗 포함)를 기준으로 가장 가까운 페이지 인덱스 반환, 페이지 기능 미사용 시 -1 반환
         /// </summary>
-        public int NearestPageIndexByScrollPos => m_pagingData.usePaging ? FindShowingClosestPageIndexFrom(PagePivotPosInScrollRect) : -1;
+        public int NearestPageIndexByScrollPos => m_pagingData.usePaging ? FindShowingClosestPageIndexFrom(ScrollPosition) : -1;
 
         private int m_prevPageIndexByScrollPos = 0;
 
@@ -104,16 +108,16 @@ namespace RecycleScroll
 
         #region Loop Scroll
 
-        private readonly float m_normalizedLoopThreshold = 0.5f;
-        private bool m_loopScrollable = false;
-
         private IScrollerMode m_scrollerMode = NormalScrollerMode.Instance;
 
-        private float FrontThreshold => m_normalizedLoopThreshold * m_scrollerMode.AddingFrontContentSize;
-        private float BackThreshold => m_normalizedLoopThreshold * m_scrollerMode.AddingBackContentSize;
+        /// <summary>루프 스크롤 설정값. 변경은 다음 LoadData부터 적용됨</summary>
+        public bool LoopScrollIsOn
+        {
+            get => m_loopScroll;
+            set => m_loopScroll = value;
+        }
 
-        public bool LoopScrollIsOn => m_loopScroll;
-        public bool IsLoopScrollable => m_loopScrollable;
+        public bool IsLoopScrollable => m_isInitialized && m_scrollerMode.IsLoop;
 
         #endregion
 
@@ -122,7 +126,7 @@ namespace RecycleScroll
         private bool m_useOneCellRect = false;
 
         private readonly ScrollOptimizationValues m_scrollOptimizationValues = new();
-        private bool UseScrollOptimization => LoopScrollIsOn == false && m_scrollOptimizationValues.use;
+        private bool UseScrollOptimization => m_scrollerMode.IsLoop == false && m_scrollOptimizationValues.use;
 
         #endregion
 
@@ -132,25 +136,21 @@ namespace RecycleScroll
         /// Setter Only Use In LoadData Method
         /// </summary>
         private float m_realContentSize = 0f;
-        public float RealContentSize => m_realContentSize;
-        public float ShowingContentSize => RealContentSize - AddingContentSize;
+        /// <summary>실 데이터 기준 콘텐트 총 크기 (패딩 포함). Content 렉트는 윈도우 크기라 이 값과 다름</summary>
+        public float ContentSize => m_realContentSize;
 
-        public float RealScrollSize => Mathf.Max(RealContentSize - ViewportSize, 0f);
-        public float ShowingScrollSize => Mathf.Max(ShowingContentSize - ViewportSize, 0f);
-
-        private float AddingContentSize => m_scrollerMode.AddingFrontContentSize + m_scrollerMode.AddingBackContentSize;
-
-        public float RealSize => RealContentSize;
-        public float ShowingSize => ShowingContentSize;
+        /// <summary>스크롤 가능 거리 = Max(ContentSize - ViewportSize, 0)</summary>
+        public float ScrollSize => Mathf.Max(ContentSize - ViewportSize, 0f);
 
         #endregion
 
         #region Scroll Position
 
         /// <summary>
-        /// 스크롤 순환 기능 사용 여부에 관계 없이 실제 정규화 스크롤 위치 반환
+        /// 정규화 스크롤 위치 [0, 1].
+        /// 루프 모드에서는 wrap 주기가 ContentSize라 최대값이 1을 넘을 수 있음 (ContentSize/ScrollSize)
         /// </summary>
-        public float RealNormalizedScrollPosition
+        public float NormalizedScrollPosition
         {
             get => ScrollAxis switch
             {
@@ -160,20 +160,14 @@ namespace RecycleScroll
             };
             set
             {
-                var setValue = value;
-                if (m_loopScrollable)
-                {
-                    if (setValue is < 0f or > 1f) setValue %= 1f;
-                    if (setValue < 0f) setValue += 1f;
-                }
-
+                // 루프 wrap은 setter가 아니라 LateUpdate의 NormalizeVirtualScrollPos와 getter에서 처리
                 switch (ScrollAxis)
                 {
                     case eScrollAxis.VERTICAL:
-                        verticalNormalizedPosition = 1f - setValue;
+                        verticalNormalizedPosition = 1f - value;
                         break;
                     case eScrollAxis.HORIZONTAL:
-                        horizontalNormalizedPosition = setValue;
+                        horizontalNormalizedPosition = value;
                         break;
                     default:
                         Debug.LogError("Not Support Scroll Axis Value");
@@ -181,27 +175,12 @@ namespace RecycleScroll
                 }
             }
         }
-        /// <summary>
-        /// 스크롤 순환 기능 사용 여부에 관계 없이 실제 스크롤 위치 반환
-        /// </summary>
-        public float RealScrollPosition
-        {
-            get => RealNormalizedScrollPosition * RealScrollSize;
-            set => RealNormalizedScrollPosition = RealScrollSize > 0f ? value / RealScrollSize : 0f;
-        }
 
-        /// <summary>
-        /// 스크롤 순환 기능을 사용 중인 경우 실제 스크롤 위치가 아닌 추가된 콘텐트 사이즈를 고려해 정규화된 스크롤 위치 반환
-        /// </summary>
-        public float ShowingNormalizedScrollPosition
+        /// <summary>스크롤 위치. 루프 모드에서는 [0, ContentSize) 범위로 wrap된 값</summary>
+        public float ScrollPosition
         {
-            get => ShowingScrollSize > 0f ? ShowingScrollPosition / ShowingScrollSize : 0f;
-            set => ShowingScrollPosition = value * ShowingScrollSize;
-        }
-        public float ShowingScrollPosition
-        {
-            get => ConvertRealToShow(RealScrollPosition);
-            set => RealScrollPosition = ConvertShowToReal(value);
+            get => NormalizedScrollPosition * ScrollSize;
+            set => NormalizedScrollPosition = ScrollSize > 0f ? value / ScrollSize : 0f;
         }
 
         public bool IsEasing => m_corMoveContent != null;
@@ -419,8 +398,8 @@ namespace RecycleScroll
         }
         public LoadDataProceedState Debug_LoadDataState => m_loadDataProceedState;
 
-        public bool Debug_IsMovementTypeOverwritten => m_overwriteMovementType.IsOverwritten;
-        public UnityEngine.UI.ScrollRect.MovementType Debug_OverwrittenMovementType => m_overwriteMovementType.OverwrittenValue;
+        public UnityEngine.UI.ScrollRect.MovementType Debug_CurrentMovementType => CurrentMovementType;
+        public bool Debug_CurrentUseInertia => UseInertia;
         public bool Debug_IsChildAlignmentOverwritten => m_overwriteChildAlignment.IsOverwritten;
         public TextAnchor Debug_OverwrittenChildAlignment => m_overwriteChildAlignment.OverwrittenValue;
 #endif

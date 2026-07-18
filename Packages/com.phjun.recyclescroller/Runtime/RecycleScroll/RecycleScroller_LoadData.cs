@@ -14,6 +14,17 @@ namespace RecycleScroll
         private readonly List<int> m_pushGroupIndexList = new();
         private readonly List<int> m_tempKeyBuffer = new();
 
+        // 윈도우 렌더링용 가시 그룹 버퍼 (논리 순서 — 루프 이음새에서 [N-1, 0, 1...] 형태 허용)
+        private readonly List<int> m_visibleGroupBuffer = new();
+        private readonly HashSet<int> m_visibleGroupSet = new();
+
+        /// <summary>최대 그룹 크기 — 윈도우 여유분(slack)과 루프 가능 판정에 사용</summary>
+        private float m_maxGroupSize;
+
+        // 스레드풀 안전 주축 패딩 캐시 (CacheUpdateCellViewValues에서 갱신)
+        private float m_cachedPaddingMainStart;
+        private float m_cachedPaddingMainEnd;
+
         private LoadDataExtensionComponent[] m_loadDataExtension;
         private LoadDataExtensionComponent[] LoadDataExtension
         {
@@ -100,12 +111,20 @@ namespace RecycleScroll
         #region LoadData 기능 분리용 함수
         private void InitializeOnLoadData(LoadParam[] _params)
         {
+            var firstInit = m_isInitialized == false;
             Init(_params);
             m_cellCount = 0;
             m_prevPageIndexByScrollPos = 0;
             m_previousScrollPosition = 0f;
-            ResetRealContentSize();
+            ResetContentSizeValue();
             ResetAllCellsAndGroups();
+
+            // 가상 위치 변환에 필요한 캐시 벡터를 로드 초기에 준비 (비동기 로드 중 물리 프레임 대비)
+            CacheUpdateCellViewValues();
+
+            // 순정 ScrollRect → 가상 위치로 전환되는 첫 로드에만 시각 위치 승계
+            // (재로드 시 anchoredPosition은 윈도우 렌더 값이라 동기화하면 안 됨)
+            if (firstInit) SyncScrollPosFromAnchored();
         }
 
         private void CacheUpdateCellViewValues()
@@ -115,12 +134,20 @@ namespace RecycleScroll
             m_cachedContentPosVec = ScrollAxis == eScrollAxis.VERTICAL ? Vector2.up : Vector2.left;
             m_cachedTopSpaceCell = Rt_TopSpaceCell;
             m_cachedBottomSpaceCell = Rt_BottomSpaceCell;
+
+            // RectOffset은 네이티브 백킹이라 스레드풀에서 접근 불가 — 주축 패딩을 float으로 캐싱
+            m_padding ??= new RectOffset();
+            m_cachedPaddingMainStart = ScrollAxis == eScrollAxis.VERTICAL ? m_padding.top : m_padding.left;
+            m_cachedPaddingMainEnd = ScrollAxis == eScrollAxis.VERTICAL ? m_padding.bottom : m_padding.right;
         }
 
         private void UpdateObjectsOnLoadData(LoadParam[] _params)
         {
-            ExecuteLoadParam<LoadParam_ScrollPosSetter>(_params, () => ShowingNormalizedScrollPosition = 0f);
+            // 캐시 벡터를 위치 세터보다 먼저 갱신해야 가상 위치 기록이 올바르게 동작
             CacheUpdateCellViewValues();
+            ClampScrollPosAfterDataChange();
+            // 위치 파라미터가 없으면 항상 기존 위치 유지 (유효 범위 보정은 위 Clamp가 담당)
+            ExecuteLoadParam<LoadParam_ScrollPosSetter>(_params);
             UpdateCellView();
             SetScrollbarSize();
         }
@@ -197,11 +224,6 @@ namespace RecycleScroll
             CalculateScrollValuesOnLoadData(_params);
             UpdateObjectsOnLoadData(_params);
 
-            if (m_loopScrollable)
-                m_overwriteMovementType.Overwrite(ScrollRect.MovementType.Unrestricted);
-            else
-                m_overwriteMovementType.RemoveOverwrite();
-
             SetLoadProceedState(LoadDataProceedState.Loaded);
             callbacks.Invoke(LoadDataResultState.Complete);
         }
@@ -273,11 +295,6 @@ namespace RecycleScroll
 
                 UpdateObjectsOnLoadData(_params);
 
-                if (m_loopScrollable)
-                    m_overwriteMovementType.Overwrite(ScrollRect.MovementType.Unrestricted);
-                else
-                    m_overwriteMovementType.RemoveOverwrite();
-
                 loadDataCallbacks.Invoke(LoadDataResultState.Complete);
             }
             finally
@@ -328,7 +345,7 @@ namespace RecycleScroll
             await UniTask.RunOnThreadPool(() => CalculateTotalScrollSize(cellCount, m_maxGroupWidth, token, 0), cancellationToken: token);
 
             AddEmptySpaceToLastGroupIfNeed();
-            await UniTask.RunOnThreadPool(() => CheckLoop(viewportSize), cancellationToken: token);
+            await UniTask.RunOnThreadPool(() => CheckLoopable(viewportSize), cancellationToken: token);
         }
 
         private void TryCancelPreviousLoadDataAsyncTask()
@@ -347,7 +364,7 @@ namespace RecycleScroll
         #endregion
 
         #region 세부 분리
-        private void ResetRealContentSize()
+        private void ResetContentSizeValue()
         {
             m_realContentSize = TopPadding + BottomPadding;
         }
@@ -396,7 +413,7 @@ namespace RecycleScroll
             CalculateTotalScrollSize(cellCount, m_maxGroupWidth, token, startIndex);
 
             AddEmptySpaceToLastGroupIfNeed();
-            CheckLoop(ViewportSize);
+            CheckLoopable(ViewportSize);
         }
 
         private void ResetMaxGroupWidthValue()
@@ -412,6 +429,9 @@ namespace RecycleScroll
 
         private void CalculateTotalScrollSize(int cellCount, float maxGroupWidth, CancellationToken? token, int startIndex)
         {
+            // ponytail: 부분 재계산(startIndex>0) 시 러닝 맥스 유지 — 제거로 실제 최대가 줄어도 윈도우가 약간 커질 뿐
+            if (startIndex == 0) m_maxGroupSize = 0f;
+
             for (int i = startIndex; i < cellCount;)
             {
                 if (token is { IsCancellationRequested: true })
@@ -424,6 +444,7 @@ namespace RecycleScroll
                 var newGroup = CreateCellGroupData(i, cellCount, maxGroupWidth);
                 var startingPoint = m_realContentSize - BottomPadding;
                 m_realContentSize += newGroup.size + Spacing;
+                if (newGroup.size > m_maxGroupSize) m_maxGroupSize = newGroup.size;
                 #endregion
 
                 #region 그룹 데이터 세팅
@@ -455,7 +476,7 @@ namespace RecycleScroll
             // 부족한 사이즈만큼의 빈 그룹 데이터 추가
             if (m_pagingData.usePaging == false || m_pagingData.addEmptySpaceToLastPage == false) return;
 
-            var lastPageIndex = RealPageCount - 1;
+            var lastPageIndex = PageCount - 1;
             var lastPagePos = m_dp_pagePos[lastPageIndex];
             var endContentPos = m_realContentSize;
             var scrollViewSize = ViewportSize;
@@ -475,133 +496,64 @@ namespace RecycleScroll
             m_realContentSize += addedEmptySpaceSize + Spacing;
         }
 
-        private void CheckLoop(float viewportSize)
+        /// <summary>
+        /// 루프 가능 여부 판정 및 모드 선택. 복제 그룹 없이 원본 데이터만 유지한다.
+        /// 스레드풀에서 호출될 수 있으므로 Unity API 접근 금지 (패딩은 float 캐시 사용).
+        /// </summary>
+        private void CheckLoopable(float viewportSize)
         {
-            m_loopScrollable = false;
-            m_scrollerMode = NormalScrollerMode.Instance;
+            var prevTop = TopPadding;
+            var prevBottom = BottomPadding;
 
-            if (m_loopScroll == false) return;
+            var loopable = m_loopScroll
+                && m_realContentSize > viewportSize
+                && Mathf.Approximately(m_realContentSize, viewportSize) == false;
 
-            // 현재까지 계산된 총 콘텐츠 사이즈가 루프를 필요로 할 만큼 크지 않다면 계산하지 않음
-            if (m_realContentSize <= viewportSize || Mathf.Approximately(m_realContentSize, viewportSize)) return;
-
-            m_loopScrollable = true;
-
-            // 그룹데이터 리스트의 양 끝에 뷰포트 사이즈만큼씩 순환을 위한 그룹 데이터 추가
-            // 각각의 추가할 그룹데이터 리스트는 뷰포트 사이즈만큼 찾아 추가
-
-            #region 1. 맨 앞에 추가될 그룹 데이터 리스트 검사
-            var originalGroupCount = m_list_groupData.Count;
-            var startIndex = originalGroupCount - 1;
-            var checkIndex = startIndex;
-            var addingGroupsSize = 0f;
-            for (; checkIndex >= 0 && addingGroupsSize - Spacing + TopPadding < viewportSize; checkIndex--)
-                addingGroupsSize += m_list_groupData[checkIndex].size + Spacing;
-            var endIndex = checkIndex;
-            m_list_groupData.TryGetSafeRange(endIndex, startIndex - endIndex + 1, out var frontAddGroupList);
-            #endregion
-
-            #region 2. 맨 뒤에 추가될 그룹 데이터 리스트 검사
-            startIndex = 0;
-            checkIndex = startIndex;
-            addingGroupsSize = 0f;
-            for (; checkIndex < originalGroupCount && addingGroupsSize - Spacing + BottomPadding < viewportSize; checkIndex++)
-                addingGroupsSize += m_list_groupData[checkIndex].size + Spacing;
-            endIndex = checkIndex;
-            m_list_groupData.TryGetSafeRange(startIndex, endIndex - startIndex + 1, out var backAddGroupList);
-            #endregion
-
-            #region 3. 양 끝에 그룹 데이터 리스트 추가에 따른 콜렉션 재계산
-            var frontAddCount = frontAddGroupList?.Count ?? 0;
-            var backAddCount = backAddGroupList?.Count ?? 0;
-            m_tempKeyBuffer.Clear();
-            foreach (var key in m_dict_groupIndexOfCell.Keys)
-                m_tempKeyBuffer.Add(key);
-            foreach (var cellIndex in m_tempKeyBuffer)
-                m_dict_groupIndexOfCell[cellIndex] += frontAddCount;
-
-            m_dp_groupPos.TryGetSafeRange(m_dp_groupPos.Count - frontAddCount, frontAddCount, out var frontAddGroupPosList);
-            var tempPos = frontAddGroupPosList != null && frontAddGroupPosList.Count > 0 ? frontAddGroupPosList[0] : 0f;
-            if (frontAddGroupPosList != null)
+            // 동일 그룹이 화면에 두 번 노출되는 구성은 미지원 (기존 복제 방식에도 있던 제약)
+            if (loopable && m_realContentSize < viewportSize + m_maxGroupSize + Spacing)
             {
-                for (int i = 0; i < frontAddGroupPosList.Count; i++)
-                    frontAddGroupPosList[i] -= tempPos;
+                Debug.LogWarning("[RecycleScroller] 콘텐트가 뷰포트 대비 너무 작아 루프 스크롤을 비활성화합니다. "
+                    + $"(content: {m_realContentSize}, viewport: {viewportSize}, maxGroup: {m_maxGroupSize})");
+                loopable = false;
             }
-            var frontAddingGroupsSize = (frontAddGroupPosList != null && frontAddGroupPosList.Count > 0 ? frontAddGroupPosList[frontAddGroupPosList.Count - 1] : 0f)
-                + (frontAddGroupList != null && frontAddGroupList.Count > 0 ? frontAddGroupList[frontAddGroupList.Count - 1].size : 0f) + Spacing;
-            frontAddingGroupsSize = Mathf.Max(frontAddingGroupsSize, 0f);
 
-            m_dp_groupPos.TryGetSafeRange(0, backAddCount, out var backAddGroupPosList);
-            tempPos = m_realContentSize + frontAddingGroupsSize;
-            if (backAddGroupPosList != null)
+            m_scrollerMode = loopable ? (IScrollerMode)LoopScrollerMode.Instance : NormalScrollerMode.Instance;
+
+            // 모드별 주축 패딩 정책 적용 (루프: spacing/2 — 이음새 간격 균일화)
+            TopPadding = m_scrollerMode.GetTopPadding(m_spacing, m_cachedPaddingMainStart);
+            BottomPadding = m_scrollerMode.GetBottomPadding(m_spacing, m_cachedPaddingMainEnd);
+            var topDelta = TopPadding - prevTop;
+            var bottomDelta = BottomPadding - prevBottom;
+            if (Mathf.Approximately(topDelta, 0f) == false || Mathf.Approximately(bottomDelta, 0f) == false)
             {
-                for (int i = 0; i < backAddGroupPosList.Count; i++)
-                    backAddGroupPosList[i] += tempPos;
+                // 패딩 차이만큼 이미 계산된 위치들을 시프트 (전체 재계산 불필요)
+                for (int i = 0; i < m_dp_groupPos.Count; i++) m_dp_groupPos[i] += topDelta;
+                for (int i = 0; i < m_dp_pagePos.Count; i++) m_dp_pagePos[i] += topDelta;
+                m_realContentSize += topDelta + bottomDelta;
+                // ponytail: 패딩 변화로 루프 가능 여부가 뒤바뀌는 극단 엣지는 무시 (spacing/2 vs 패딩 차이 수준)
             }
-            var backAddingGroupsSize = (backAddGroupPosList != null && backAddGroupPosList.Count > 0 ? backAddGroupPosList[backAddGroupPosList.Count - 1] - backAddGroupPosList[0] : 0f)
-                + (backAddGroupList != null && backAddGroupList.Count > 0 ? backAddGroupList[backAddGroupList.Count - 1].size : 0f) + Spacing;
-            backAddingGroupsSize = Mathf.Max(backAddingGroupsSize, 0f);
 
-            m_realContentSize += frontAddingGroupsSize + backAddingGroupsSize;
+            // 최종 위치/크기 확정 후 reverse 페이지 파티션 재구성
+            RebuildPagePositionsForReverse();
+        }
 
-            #region 그룹 위치 리스트 재계산
-            for (int i = 0; i < m_dp_groupPos.Count; i++)
-                m_dp_groupPos[i] += frontAddingGroupsSize;
-            if (frontAddGroupPosList != null) m_dp_groupPos.InsertRange(0, frontAddGroupPosList);
-            if (backAddGroupPosList != null) m_dp_groupPos.AddRange(backAddGroupPosList);
-            #endregion
+        /// <summary>
+        /// reverse: 페이지 파티션을 시각 순서(데이터 끝 그룹부터 countPerPage개씩) 기준으로 재구성.
+        /// 위치도 스크롤(시각) 좌표로 저장하므로 소비처는 좌표계 구분 없이 사용한다.
+        /// 데이터 순서 파티션을 그대로 미러하면 나머지 그룹 페이지가 시각 첫 페이지가 되어 경계가 어긋남
+        /// </summary>
+        private void RebuildPagePositionsForReverse()
+        {
+            if (m_reverse == false || m_pagingData.countPerPage <= 0) return;
 
-            #region 페이지 위치 리스트 재계산
-            var frontAdditionalPageCount = 0;
-            var backAdditionalPageCount = 0;
-            if (m_pagingData.usePaging)
+            m_dp_pagePos.Clear();
+            var groupCount = m_list_groupData.Count;
+            var countPerPage = m_pagingData.countPerPage;
+            for (int p = 0; p * countPerPage < groupCount; p++)
             {
-                // ShowingContentSize를 로컬로 계산 (m_scrollerMode가 아직 설정되지 않았으므로)
-                var showingContentSize = m_realContentSize - frontAddingGroupsSize - backAddingGroupsSize;
-
-                // 앞에 추가된 그룹 데이터들이 속한 페이지 체크
-                var frontPageCount = frontAddCount / m_pagingData.countPerPage;
-                if (frontAddCount % m_pagingData.countPerPage > 0) frontPageCount++;
-                frontPageCount++;
-                var frontAddPageStartIndex = m_dp_pagePos.Count - frontPageCount;
-                m_dp_pagePos.TryGetSafeRange(frontAddPageStartIndex, frontPageCount, out var frontPagePosRaw);
-                if (frontPagePosRaw != null)
-                {
-                    for (int i = 0; i < frontPagePosRaw.Count; i++)
-                        frontPagePosRaw[i] += -showingContentSize + frontAddingGroupsSize;
-                }
-                frontAdditionalPageCount = frontPageCount;
-
-                // 뒤에 추가된 그룹 데이터들이 속한 페이지 체크
-                var backPageCount = backAddCount / m_pagingData.countPerPage;
-                if (backAddCount % m_pagingData.countPerPage > 0) backPageCount++;
-                backPageCount++;
-                m_dp_pagePos.TryGetSafeRange(0, backPageCount, out var backPagePosRaw);
-                if (backPagePosRaw != null)
-                {
-                    for (int i = 0; i < backPagePosRaw.Count; i++)
-                        backPagePosRaw[i] += m_realContentSize - backAddingGroupsSize;
-                }
-                backAdditionalPageCount = backPageCount;
-
-                // 각 페이지 위치 리스트 재계산
-                for (int i = 0; i < m_dp_pagePos.Count; i++)
-                    m_dp_pagePos[i] += frontAddingGroupsSize;
-                if (frontPagePosRaw != null) m_dp_pagePos.InsertRange(0, frontPagePosRaw);
-                if (backPagePosRaw != null) m_dp_pagePos.AddRange(backPagePosRaw);
+                var groupIndex = groupCount - 1 - p * countPerPage;
+                m_dp_pagePos.Add(m_realContentSize - m_dp_groupPos[groupIndex] - m_list_groupData[groupIndex].size);
             }
-            #endregion
-            #endregion
-
-            #region 4. 추가된 그룹 데이터 리스트를 각각의 양 끝에 추가
-            if (frontAddGroupList != null) m_list_groupData.InsertRange(0, frontAddGroupList);
-            if (backAddGroupList != null) m_list_groupData.AddRange(backAddGroupList);
-            #endregion
-
-            // 계산된 값으로 루프 모드 전략 객체 생성
-            m_scrollerMode = new LoopScrollerMode(
-                frontAddingGroupsSize, backAddingGroupsSize,
-                frontAdditionalPageCount, backAdditionalPageCount);
         }
         #endregion
         #endregion
@@ -611,55 +563,79 @@ namespace RecycleScroll
         {
             if (del == null) return;
 
-            #region 1. Calculate Boundary Position
+            #region 1. Calculate Visible Groups
             int groupCount = m_list_groupData.Count;
             if (groupCount == 0) return;
 
-            var contentPos = Content.anchoredPosition;
-            var topBoundaryPos = Mathf.Clamp(Vector2.Dot(contentPos, m_cachedContentPosVec), 0f, RealScrollSize);
-            var bottomBoundaryPos = Mathf.Clamp(topBoundaryPos + ViewportSize, ViewportSize, RealContentSize);
-            #endregion
+            var rawScrollPos = UseVirtualScroll
+                ? m_scrollPos
+                : Vector2.Dot(Content.anchoredPosition, m_cachedContentPosVec);
+            var drawPos = m_scrollerMode.Normalize(rawScrollPos, ContentSize);
 
-            #region 2. Check Group Is Showing
-            var findVisibleGroupIndices = FindVisibleGroupIndices(topBoundaryPos, bottomBoundaryPos);
-            var firstGroupViewIndex = findVisibleGroupIndices.firstIndex;
-            var lastGroupViewIndex = findVisibleGroupIndices.lastIndex;
-            if (firstGroupViewIndex == -1 || lastGroupViewIndex == -1) return;
+            // reverse: 시각 좌표 [t, t+VP] ↔ 데이터 좌표 [C−t−VP, C−t] 미러.
+            // 버퍼는 항상 데이터 오름차순(=계층 순서)이며, reverse의 시각 내림차순은
+            // LayoutGroup.reverseArrangement가 담당한다.
+            m_visibleGroupBuffer.Clear();
+            float anchorBasePos;   // anchored 주축 = anchorBasePos − windowOrigin
+            float windowOrigin;
 
-            // m_reverse 기반 값 1회 계산
-            var topBoundaryGroupIndex = m_reverse ? groupCount - 1 : 0;
-            var bottomBoundaryGroupIndex = m_reverse ? 0 : groupCount - 1;
-            var pushKeepLow = m_reverse ? lastGroupViewIndex : firstGroupViewIndex;
-            var pushKeepHigh = m_reverse ? firstGroupViewIndex : lastGroupViewIndex;
-            int setStartIndex = m_reverse ? firstGroupViewIndex : lastGroupViewIndex;
-            int setLastIndex = m_reverse ? lastGroupViewIndex : firstGroupViewIndex;
+            if (m_scrollerMode.IsLoop)
+            {
+                if (m_reverse)
+                {
+                    var dataDrawPos = m_scrollerMode.Normalize(ContentSize - drawPos - ViewportSize, ContentSize);
+                    CollectVisibleGroups_Loop(dataDrawPos, groupCount, out _, out var lastUnwrappedEnd);
+                    anchorBasePos = drawPos;
+                    // 시각 최상단(버퍼 마지막)의 시각 좌표 = d + (ws + VP − lastEnd)
+                    windowOrigin = drawPos + dataDrawPos + ViewportSize - lastUnwrappedEnd;
+                }
+                else
+                {
+                    CollectVisibleGroups_Loop(drawPos, groupCount, out var firstUnwrappedPos, out _);
+                    anchorBasePos = drawPos;
+                    windowOrigin = firstUnwrappedPos;
+                }
+            }
+            else
+            {
+                if (m_reverse)
+                {
+                    var topBoundaryPos = Mathf.Clamp(drawPos, 0f, ScrollSize);
+                    var bottomBoundaryPos = Mathf.Clamp(topBoundaryPos + ViewportSize, ViewportSize, ContentSize);
+                    var (firstIndex, lastIndex) = FindVisibleGroupIndices(
+                        ContentSize - bottomBoundaryPos, ContentSize - topBoundaryPos);
+                    windowOrigin = 0f;
+                    if (firstIndex != -1)
+                    {
+                        for (int i = firstIndex; i <= lastIndex; i++)
+                            m_visibleGroupBuffer.Add(i);
+                        // 시각 최상단 = 데이터 마지막 그룹의 미러 좌표
+                        windowOrigin = ContentSize - m_dp_groupPos[lastIndex] - m_list_groupData[lastIndex].size;
+                    }
+                    anchorBasePos = rawScrollPos;
+                }
+                else
+                {
+                    windowOrigin = CollectVisibleGroups_Normal(drawPos, groupCount);
+                    anchorBasePos = rawScrollPos;
+                }
+            }
+            if (m_visibleGroupBuffer.Count == 0) return;
+
             bool reverseCellSort = m_reverse;
-
-            // Calculate space sizes
-            var topSpaceGroupSize = firstGroupViewIndex == 0
-                ? 0f
-                : Mathf.Max(m_dp_groupPos[firstGroupViewIndex] - Spacing - TopPadding, 0f);
-            var bottomSpaceGroupSize = lastGroupViewIndex == groupCount - 1
-                ? 0f
-                : Mathf.Max(RealContentSize - (m_dp_groupPos[lastGroupViewIndex] + m_list_groupData[lastGroupViewIndex].size + Spacing) - BottomPadding, 0f);
             #endregion
 
-            #region 3. Set Showing Groups
-            #region Set Space Cells
-            var widthVec = Vector2.Scale(Viewport.rect.size, m_cachedWidthMaskVec);
+            #region 2. Push Cells and Groups
+            m_visibleGroupSet.Clear();
+            foreach (var visibleIndex in m_visibleGroupBuffer)
+                m_visibleGroupSet.Add(visibleIndex);
 
-            m_cachedTopSpaceCell.gameObject.SetActive(firstGroupViewIndex != topBoundaryGroupIndex);
-            m_cachedTopSpaceCell.sizeDelta = m_cachedAxisVec * topSpaceGroupSize + widthVec;
-            m_cachedBottomSpaceCell.gameObject.SetActive(lastGroupViewIndex != bottomBoundaryGroupIndex);
-            m_cachedBottomSpaceCell.sizeDelta = m_cachedAxisVec * bottomSpaceGroupSize + widthVec;
-            #endregion
-
-            #region Push Cells and Groups
             m_pushCellIndexList.Clear();
             m_pushGroupIndexList.Clear();
             foreach (var groupIndex in m_dict_activatedGroups.Keys)
             {
-                if (pushKeepLow <= groupIndex && groupIndex <= pushKeepHigh)
+                // 루프 이음새에서 가시 범위가 불연속이므로 범위 비교 대신 집합 소속 비교
+                if (m_visibleGroupSet.Contains(groupIndex))
                     continue;
 
                 m_pushGroupIndexList.Add(groupIndex);
@@ -686,12 +662,16 @@ namespace RecycleScroll
 
             #region Set Cells
             int totalCellViewCount = 0;
-            for (int idx = firstGroupViewIndex; idx <= lastGroupViewIndex; idx++)
-                totalCellViewCount += m_list_groupData[idx].cellCount;
+            foreach (var visibleIndex in m_visibleGroupBuffer)
+                totalCellViewCount += m_list_groupData[visibleIndex].cellCount;
             int lastCellViewIndex = totalCellViewCount - 1;
 
-            for (int i = setStartIndex; i >= setLastIndex; i--)
+            // 버퍼 역순으로 sibling 1 삽입 → 최종 계층은 버퍼(논리) 순서.
+            // reverse 모드의 시각 반전은 LayoutGroup.reverseArrangement가 담당
+            for (int b = m_visibleGroupBuffer.Count - 1; b >= 0; b--)
             {
+                var i = m_visibleGroupBuffer[b];
+
                 // 이미 활성화된 그룹이 존재하는 경우, 해당 그룹을 재활용
                 var isAlreadyActivated = m_dict_activatedGroups.ContainsKey(i) && m_dict_activatedGroups[i];
                 if (isAlreadyActivated == false) m_dict_activatedGroups.Remove(i);
@@ -713,14 +693,22 @@ namespace RecycleScroll
                     else ResetGroupNoCells(getGroup, i);
                 }
 
-                // 그룹 내 셀 설정
-                for (int j = sortedStartIndex; j <= sortedLastIndex && cellIsNothing == false; j++)
+                // 그룹 내 셀 설정 (reverse면 역방향 순회)
+                for (int step = 0; step < groupData.cellCount && cellIsNothing == false; step++)
                 {
+                    var j = reverseCellSort ? cellLastIndex - step : cellStartIndex + step;
+
                     var isAlreadyActivatedCell = m_dict_activatedCells.ContainsKey(j) && m_dict_activatedCells[j];
                     if (isAlreadyActivatedCell == false) m_dict_activatedCells.Remove(j);
 
                     var getCell = isAlreadyActivatedCell ? m_dict_activatedCells[j] : del.GetCell(this, j, lastCellViewIndex);
                     if (getCell == false) continue;
+
+                    // 선언된 셀 크기(GetCellRect)를 렉트에 반영 — 가변 크기 셀 지원
+                    var cellSizeVec = m_list_cellSizeVec[j];
+                    getCell.UpdateCellSize(ScrollAxis == eScrollAxis.VERTICAL
+                        ? new Vector2(cellSizeVec.CrossAxisSize, cellSizeVec.Size)
+                        : new Vector2(cellSizeVec.Size, cellSizeVec.CrossAxisSize));
 
                     if (isAlreadyActivatedCell == false)
                     {
@@ -748,7 +736,113 @@ namespace RecycleScroll
                 getGroup.transform.SetSiblingIndex(1);
             }
             #endregion
-            #endregion
+
+            ApplyWindowTransform(anchorBasePos, windowOrigin);
+        }
+
+        /// <summary>
+        /// 비루프 가시 그룹 수집. 버퍼에 [first..last] 연속 구간을 담고 첫 그룹의 위치를 반환
+        /// </summary>
+        private float CollectVisibleGroups_Normal(float drawPos, int groupCount)
+        {
+            var topBoundaryPos = Mathf.Clamp(drawPos, 0f, ScrollSize);
+            var bottomBoundaryPos = Mathf.Clamp(topBoundaryPos + ViewportSize, ViewportSize, ContentSize);
+
+            var (firstIndex, lastIndex) = FindVisibleGroupIndices(topBoundaryPos, bottomBoundaryPos);
+            if (firstIndex == -1 || lastIndex == -1) return 0f;
+
+            for (int i = firstIndex; i <= lastIndex; i++)
+                m_visibleGroupBuffer.Add(i);
+            return m_dp_groupPos[firstIndex];
+        }
+
+        /// <summary>
+        /// 루프 가시 그룹 수집. drawPos([0, contentSize) wrap 값)부터 순환 순회하며
+        /// 논리 순서(이음새에서 [N-1, 0, 1...] 형태)로 버퍼에 담는다.
+        /// unwrap 위치 = m_dp_groupPos[i] + cycle * contentSize (이음새 간격 = Bottom+TopPadding = spacing)
+        /// </summary>
+        /// <param name="firstUnwrappedPos">첫 가시 그룹의 unwrap 시작 위치</param>
+        /// <param name="lastUnwrappedEnd">마지막 가시 그룹의 unwrap 끝 위치 (reverse 원점 계산용)</param>
+        private void CollectVisibleGroups_Loop(float drawPos, int groupCount,
+            out float firstUnwrappedPos, out float lastUnwrappedEnd)
+        {
+            var contentSize = ContentSize;
+            var limit = drawPos + ViewportSize;
+            firstUnwrappedPos = 0f;
+            lastUnwrappedEnd = 0f;
+
+            // 시작 그룹: drawPos 이하에서 시작하는 마지막 그룹. 없으면(상단 패딩 구간) 이전 사이클의 마지막 그룹
+            var index = UpperBound(m_dp_groupPos, drawPos) - 1;
+            var cycle = 0;
+            if (index < 0)
+            {
+                index = groupCount - 1;
+                cycle = -1;
+            }
+
+            var unwrappedPos = m_dp_groupPos[index] + cycle * contentSize;
+
+            for (int safety = 0; safety <= groupCount; safety++)
+            {
+                var groupSize = m_list_groupData[index].size;
+                var visible = unwrappedPos + groupSize >= drawPos && unwrappedPos <= limit;
+                if (visible)
+                {
+                    // 같은 그룹 재노출(한 바퀴) 방지 — CheckLoopable에서 차단되지만 방어
+                    if (m_visibleGroupBuffer.Count > 0 && m_visibleGroupBuffer[0] == index) break;
+                    if (m_visibleGroupBuffer.Count == 0) firstUnwrappedPos = unwrappedPos;
+                    m_visibleGroupBuffer.Add(index);
+                    lastUnwrappedEnd = unwrappedPos + groupSize;
+                }
+                else if (m_visibleGroupBuffer.Count > 0) break;
+
+                index++;
+                if (index >= groupCount)
+                {
+                    index = 0;
+                    cycle++;
+                }
+
+                unwrappedPos = m_dp_groupPos[index] + cycle * contentSize;
+                if (unwrappedPos > limit) break;
+            }
+        }
+
+        /// <summary>
+        /// 윈도우 배치: Content.anchoredPosition 주축 = anchorBasePos − windowOrigin.
+        /// 비루프 overshoot(러버밴드)는 raw 위치가 그대로 반영되어 순정과 동일한 시각 표현.
+        /// SpaceCell은 윈도우 방식에서 사용하지 않는다 (오프셋은 anchoredPosition이 담당)
+        /// </summary>
+        private void ApplyWindowTransform(float anchorBasePos, float windowOrigin)
+        {
+            if (UseVirtualScroll == false) return;
+
+            if (m_cachedTopSpaceCell && m_cachedTopSpaceCell.gameObject.activeSelf)
+                m_cachedTopSpaceCell.gameObject.SetActive(false);
+            if (m_cachedBottomSpaceCell && m_cachedBottomSpaceCell.gameObject.activeSelf)
+                m_cachedBottomSpaceCell.gameObject.SetActive(false);
+
+            var mainAnchored = anchorBasePos - windowOrigin;
+            var anchored = m_content.anchoredPosition;
+            var currentMain = Vector2.Dot(anchored, m_cachedContentPosVec);
+            if (Mathf.Approximately(currentMain, mainAnchored)) return;
+
+            // 렌더 미러 기록 — SetContentAnchoredPosition을 경유하면 안 됨 (가상 위치가 오염됨)
+            m_content.anchoredPosition = anchored + (mainAnchored - currentMain) * m_cachedContentPosVec;
+            UpdateBounds();
+        }
+
+        /// <summary>list[idx] > value 를 만족하는 첫 인덱스 (이진 탐색)</summary>
+        private static int UpperBound(List<float> list, float value)
+        {
+            int lo = 0, hi = list.Count;
+            while (lo < hi)
+            {
+                var mid = (lo + hi) >> 1;
+                if (list[mid] <= value) lo = mid + 1;
+                else hi = mid;
+            }
+            return lo;
         }
 
         public void ReloadCellView()
@@ -772,25 +866,18 @@ namespace RecycleScroll
             var groupCount = m_list_groupData.Count;
             if (groupCount == 0) return (-1, -1);
 
-            // 현재 범위에서 보여지는 셀 탐색
-            // 셀의 끝 부분이 탐색 시작 위치보다 크거나 같고, 셀의 시작 부분이 탐색 종료 위치보다 작거나 같은 셀들을 찾아야 함
-            int firstIndex = -1;
-            int lastIndex = -1;
-            for (int i = 0; i < groupCount; i++)
-            {
-                var pos = m_dp_groupPos[i];
-                var endPos = pos + m_list_groupData[i].size;
-                if (endPos >= topBoundaryPos && pos <= bottomBoundaryPos)
-                {
-                    if (firstIndex == -1) firstIndex = i;
-                    lastIndex = i;
-                }
-                else if (firstIndex != -1)
-                {
-                    // 가시 영역은 연속된 범위이므로 조기 탈출
-                    break;
-                }
-            }
+            // 현재 범위에서 보여지는 셀 탐색 (이진 탐색으로 시작 지점 확정 후 가시 구간만 순회)
+            // 조건: 그룹 끝 >= 탐색 시작 && 그룹 시작 <= 탐색 종료
+            var firstIndex = UpperBound(m_dp_groupPos, topBoundaryPos) - 1;
+            if (firstIndex < 0) firstIndex = 0;
+            while (firstIndex < groupCount
+                && m_dp_groupPos[firstIndex] + m_list_groupData[firstIndex].size < topBoundaryPos)
+                firstIndex++;
+            if (firstIndex >= groupCount || m_dp_groupPos[firstIndex] > bottomBoundaryPos) return (-1, -1);
+
+            var lastIndex = firstIndex;
+            while (lastIndex + 1 < groupCount && m_dp_groupPos[lastIndex + 1] <= bottomBoundaryPos)
+                lastIndex++;
             return (firstIndex, lastIndex);
         }
 
@@ -810,7 +897,17 @@ namespace RecycleScroll
             // 그룹에 셀을 넣을 수 있는 지 체크
             // 그룹에 셀을 최소 하나는 포함하도록 설정
             int endIndex = totalCellCount;
-            if (FixCellCountInGroup) endIndex = Mathf.Min(startIndex + m_fixedCellCount, totalCellCount);
+            if (FixCellCountInGroup)
+            {
+                var countInGroup = m_fixedCellCount;
+                // reverse: 나머지 셀은 데이터 시작(시각 끝) 그룹에 배치 — 시각 첫 그룹이 가득 차도록
+                if (m_reverse && startIndex == 0)
+                {
+                    var remainder = totalCellCount % m_fixedCellCount;
+                    if (remainder > 0) countInGroup = remainder;
+                }
+                endIndex = Mathf.Min(startIndex + countInGroup, totalCellCount);
+            }
             else if (m_useMinMaxFlexibleCellCount)
             {
                 int minLimit = Mathf.Min(startIndex + m_flexibleCellCountLimit.min, totalCellCount);

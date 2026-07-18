@@ -43,15 +43,7 @@ namespace RecycleScroll
         {
             protected override void SetPosition(RecycleScroller scroller, float position)
             {
-                scroller.RealNormalizedScrollPosition = position;
-            }
-        }
-
-        public class LoadParam_NormalScrollPos_Showing : LoadParam_UsingScrollPos
-        {
-            protected override void SetPosition(RecycleScroller scroller, float position)
-            {
-                scroller.ShowingNormalizedScrollPosition = position;
+                scroller.NormalizedScrollPosition = position;
             }
         }
 
@@ -59,15 +51,7 @@ namespace RecycleScroll
         {
             protected override void SetPosition(RecycleScroller scroller, float position)
             {
-                scroller.RealScrollPosition = position;
-            }
-        }
-
-        public class LoadParam_DenormalScrollPos_Showing : LoadParam_UsingScrollPos
-        {
-            protected override void SetPosition(RecycleScroller scroller, float position)
-            {
-                scroller.ShowingScrollPosition = position;
+                scroller.ScrollPosition = position;
             }
         }
 
@@ -174,16 +158,10 @@ namespace RecycleScroll
 
         #region Execute LoadParam
 
-        private void ExecuteLoadParam<T>(LoadParam[] _params, Action actionOnNotFound = null)
+        private void ExecuteLoadParam<T>(LoadParam[] _params)
             where T : LoadParam
         {
-            if (_params is null or { Length: 0 }) return;
-
-            if (TryFindLoadParams(_params, out T[] findItems) == false)
-            {
-                actionOnNotFound?.Invoke();
-                return;
-            }
+            if (TryFindLoadParams(_params, out T[] findItems) == false) return;
 
             findItems.ActionForOnlyLastAttribute(param => param.Execute(this));
         }

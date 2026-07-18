@@ -35,6 +35,9 @@ namespace RecycleScroll
         private readonly Vector3[] m_corners = new Vector3[4];
         private RectTransform m_mainAxisScrollbarRect;
 
+        /// <summary>핸들 크기 갱신 감지용 — 리빌드 루프 밖(LateUpdate)에서만 스크롤바 크기를 만지기 위함</summary>
+        private float m_lastScrollbarViewportSize = -1f;
+
         #endregion
 
         #region ScrollRect Properties
@@ -58,9 +61,11 @@ namespace RecycleScroll
         {
             get
             {
-                if (Application.isPlaying)
-                    return m_contentBounds.size.x > m_viewBounds.size.x + 0.01f;
-                return true;
+                if (Application.isPlaying == false) return true;
+                // 가상 모드 주축: 콘텐트 렉트가 윈도우 크기라 데이터 기준으로 판단
+                if (UseVirtualScroll && ScrollAxis == eScrollAxis.HORIZONTAL)
+                    return ContentSize > ViewportSize + 0.01f;
+                return m_contentBounds.size.x > m_viewBounds.size.x + 0.01f;
             }
         }
 
@@ -68,14 +73,21 @@ namespace RecycleScroll
         {
             get
             {
-                if (Application.isPlaying)
-                    return m_contentBounds.size.y > m_viewBounds.size.y + 0.01f;
-                return true;
+                if (Application.isPlaying == false) return true;
+                if (UseVirtualScroll && ScrollAxis == eScrollAxis.VERTICAL)
+                    return ContentSize > ViewportSize + 0.01f;
+                return m_contentBounds.size.y > m_viewBounds.size.y + 0.01f;
             }
         }
 
         private bool MainAxisScrollingNeeded
             => ScrollAxis == eScrollAxis.VERTICAL ? vScrollingNeeded : hScrollingNeeded;
+
+        /// <summary>
+        /// 관성 사용 여부 파생 — 페이징 사용 중(로드 후)에는 스냅이 이동을 담당하므로 관성 비활성.
+        /// 직렬화 설정값(m_inertia)은 훼손하지 않는다
+        /// </summary>
+        private bool UseInertia => m_inertia && (m_isInitialized == false || m_pagingData.usePaging == false);
 
         #endregion
 
@@ -145,7 +157,7 @@ namespace RecycleScroll
             m_pointerStartLocalCursor = Vector2.zero;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 viewRect, eventData.position, eventData.pressEventCamera, out m_pointerStartLocalCursor);
-            m_contentStartPosition = m_content.anchoredPosition;
+            m_contentStartPosition = LogicalPosition;
             m_dragging = true;
 
             // RecycleScroller 기존 로직
@@ -173,7 +185,7 @@ namespace RecycleScroll
             var pointerDelta = localCursor - m_pointerStartLocalCursor;
             Vector2 position = m_contentStartPosition + pointerDelta;
 
-            Vector2 offset = CalculateOffset(position - m_content.anchoredPosition);
+            Vector2 offset = CalculateOffset(position - LogicalPosition);
             position += offset;
             if (CurrentMovementType == ScrollRect.MovementType.Elastic)
             {
@@ -225,10 +237,10 @@ namespace RecycleScroll
             if (data.IsScrolling())
                 m_scrolling = true;
 
-            Vector2 position = m_content.anchoredPosition;
+            Vector2 position = LogicalPosition;
             position += delta * m_scrollSensitivity;
             if (CurrentMovementType == ScrollRect.MovementType.Clamped)
-                position += CalculateOffset(position - m_content.anchoredPosition);
+                position += CalculateOffset(position - LogicalPosition);
 
             SetContentAnchoredPosition(position);
             UpdateBounds();
@@ -244,6 +256,14 @@ namespace RecycleScroll
                 position.x = m_content.anchoredPosition.x;
             if (m_vertical == false)
                 position.y = m_content.anchoredPosition.y;
+
+            if (UseVirtualScroll)
+            {
+                // 가상 모드: 주축은 스칼라에만 기록. anchoredPosition은 렌더러(UpdateCellView)가 소유
+                // ponytail: 보조축 스크롤 활성화 시 보조축 성분의 anchored 기록 경로 추가 필요
+                m_scrollPos = Vector2.Dot(position, m_cachedContentPosVec);
+                return;
+            }
 
             if (position != m_content.anchoredPosition)
             {
@@ -277,9 +297,12 @@ namespace RecycleScroll
 
             if (deltaTime > 0.0f)
             {
-                if (m_dragging == false && (offset != Vector2.zero || m_velocity != Vector2.zero))
+                // 이동/페이지 스냅 이징 중에는 경계 물리를 양보 — 목표가 범위 내로 클램프되므로
+                // 이징 종료 후 자연 복귀 (Elastic 복원과 마그넷이 매 프레임 서로 덮어쓰는 충돌 방지)
+                if (m_dragging == false && IsEasing == false && (offset != Vector2.zero || m_velocity != Vector2.zero))
                 {
-                    Vector2 position = m_content.anchoredPosition;
+                    Vector2 basePosition = LogicalPosition;
+                    Vector2 position = basePosition;
                     for (int axis = 0; axis < 2; axis++)
                     {
                         if (CurrentMovementType == ScrollRect.MovementType.Elastic && offset[axis] != 0)
@@ -289,14 +312,14 @@ namespace RecycleScroll
                             if (m_scrolling)
                                 smoothTime *= 3.0f;
                             position[axis] = Mathf.SmoothDamp(
-                                m_content.anchoredPosition[axis],
-                                m_content.anchoredPosition[axis] + offset[axis],
+                                basePosition[axis],
+                                basePosition[axis] + offset[axis],
                                 ref speed, smoothTime, Mathf.Infinity, deltaTime);
                             if (Mathf.Abs(speed) < 1)
                                 speed = 0;
                             m_velocity[axis] = speed;
                         }
-                        else if (m_inertia)
+                        else if (UseInertia)
                         {
                             m_velocity[axis] *= Mathf.Pow(m_decelerationRate, deltaTime);
                             if (Mathf.Abs(m_velocity[axis]) < 1)
@@ -311,22 +334,25 @@ namespace RecycleScroll
 
                     if (CurrentMovementType == ScrollRect.MovementType.Clamped)
                     {
-                        offset = CalculateOffset(position - m_content.anchoredPosition);
+                        offset = CalculateOffset(position - basePosition);
                         position += offset;
                     }
 
                     SetContentAnchoredPosition(position);
                 }
 
-                if (m_dragging && m_inertia)
+                if (m_dragging && UseInertia)
                 {
-                    Vector3 newVelocity = (m_content.anchoredPosition - m_prevPosition) / deltaTime;
+                    Vector3 newVelocity = (LogicalPosition - m_prevPosition) / deltaTime;
                     m_velocity = Vector3.Lerp(m_velocity, newVelocity, deltaTime * 10);
                 }
             }
 
+            // 루프 wrap 정규화 — 변경 감지 전에 수행 (prev 참조들도 함께 시프트되어 delta 보존)
+            NormalizeVirtualScrollPos();
+
             if (m_viewBounds != m_prevViewBounds || m_contentBounds != m_prevContentBounds
-                || m_content.anchoredPosition != m_prevPosition)
+                || LogicalPosition != m_prevPosition)
             {
                 OnScrollPositionChanged(normalizedPosition);
                 UpdatePrevData();
@@ -335,6 +361,12 @@ namespace RecycleScroll
             UpdateScrollbarVisibility();
             if (m_isInitialized == false)
                 UpdateScrollbarSizeFromRect();
+            else if (Mathf.Approximately(m_lastScrollbarViewportSize, ViewportSize) == false)
+            {
+                // 뷰포트 크기 변경 시 핸들 크기 갱신 — 리빌드 루프 밖이라 SetSize→Refresh 안전
+                m_lastScrollbarViewportSize = ViewportSize;
+                SetScrollbarSize();
+            }
             m_scrolling = false;
         }
 
@@ -356,6 +388,9 @@ namespace RecycleScroll
         {
             get
             {
+                if (UseVirtualScroll && ScrollAxis == eScrollAxis.HORIZONTAL)
+                    return MainNormalizedScrollPos;
+
                 UpdateBounds();
                 if ((m_contentBounds.size.x <= m_viewBounds.size.x)
                     || Mathf.Approximately(m_contentBounds.size.x, m_viewBounds.size.x))
@@ -369,6 +404,9 @@ namespace RecycleScroll
         {
             get
             {
+                if (UseVirtualScroll && ScrollAxis == eScrollAxis.VERTICAL)
+                    return 1f - MainNormalizedScrollPos;
+
                 UpdateBounds();
                 if ((m_contentBounds.size.y <= m_viewBounds.size.y)
                     || Mathf.Approximately(m_contentBounds.size.y, m_viewBounds.size.y))
@@ -382,6 +420,19 @@ namespace RecycleScroll
         {
             EnsureLayoutHasRebuilt();
             UpdateBounds();
+
+            bool mainAxis = (axis == 1) == (ScrollAxis == eScrollAxis.VERTICAL);
+            if (UseVirtualScroll && mainAxis)
+            {
+                // 주축: 가상 위치에 직접 기록 (ScrollRect 관습: vertical은 1이 최상단)
+                var newScrollPos = (axis == 1 ? 1f - value : value) * ScrollSize;
+                if (Mathf.Abs(newScrollPos - m_scrollPos) > 0.01f)
+                {
+                    m_scrollPos = newScrollPos;
+                    m_velocity[axis] = 0;
+                }
+                return;
+            }
 
             float hiddenLength = m_contentBounds.size[axis] - m_viewBounds.size[axis];
             float contentBoundsMinPosition = m_viewBounds.min[axis] - value * hiddenLength;
@@ -485,8 +536,18 @@ namespace RecycleScroll
 
         private Vector2 CalculateOffset(Vector2 delta)
         {
-            return InternalCalculateOffset(ref m_viewBounds, ref m_contentBounds,
-                m_horizontal, m_vertical, CurrentMovementType, ref delta);
+            // LoadData 전: 순정 ScrollRect와 동일한 bounds 실측 방식
+            if (UseVirtualScroll == false)
+                return InternalCalculateOffset(ref m_viewBounds, ref m_contentBounds,
+                    m_horizontal, m_vertical, CurrentMovementType, ref delta);
+
+            // LoadData 후: 주축 유효 범위를 알고 있으므로 모드 경계 정책 수식으로 계산
+            if (CurrentMovementType == ScrollRect.MovementType.Unrestricted)
+                return Vector2.zero;
+
+            var pos = m_scrollPos + Vector2.Dot(delta, m_cachedContentPosVec);
+            var mainOffset = m_scrollerMode.CalculateOffset(pos, ScrollSize);
+            return mainOffset * m_cachedContentPosVec;
         }
 
         private static Vector2 InternalCalculateOffset(ref Bounds viewBounds, ref Bounds contentBounds,
@@ -550,7 +611,7 @@ namespace RecycleScroll
             if (m_content == null)
                 m_prevPosition = Vector2.zero;
             else
-                m_prevPosition = m_content.anchoredPosition;
+                m_prevPosition = LogicalPosition;
             m_prevViewBounds = m_viewBounds;
             m_prevContentBounds = m_contentBounds;
         }
@@ -656,7 +717,9 @@ namespace RecycleScroll
             }
 
             // 주축 스크롤바 RectTransform 점유 (스크롤 방향으로 stretch)
-            if (m_mainAxisScrollbarRect)
+            // 순정 ScrollRect parity: AutoHideAndExpandViewport일 때만 (그 외에는 직렬화 값 유지)
+            bool mainAxisExpand = ScrollAxis == eScrollAxis.VERTICAL ? m_vSliderExpand : m_hSliderExpand;
+            if (mainAxisExpand && m_mainAxisScrollbarRect)
             {
                 if (ScrollAxis == eScrollAxis.VERTICAL)
                 {

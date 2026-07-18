@@ -16,14 +16,6 @@ namespace RecycleScroll
             if (Content == null || Viewport == null) return;
 
             UpdateScrollAxisToScrollRect();
-            if (m_loopScroll)
-                m_overwriteMovementType.Overwrite(ScrollRect.MovementType.Unrestricted);
-            else
-                m_overwriteMovementType.RemoveOverwrite();
-            if (m_fitContentToViewport)
-                Content.sizeDelta = ScrollAxis == eScrollAxis.VERTICAL
-                    ? new Vector2(0f, ViewportSize)
-                    : new Vector2(ViewportSize, 0f);
             UnityEditor.EditorApplication.delayCall += DelayedCall_ForOnValidate;
         }
 
@@ -32,6 +24,12 @@ namespace RecycleScroll
             UnityEditor.EditorApplication.delayCall -= DelayedCall_ForOnValidate;
             // 에디터 편집 중 발생하는 RecycleScroller 타입에 대한 MissingReferenceException 에러 예외 처리
             if (this == null || this.gameObject == null) return;
+
+            // RectTransform 크기 변경은 OnValidate 안에서 금지(SendMessage 경고) — 지연 호출로 수행
+            if (m_fitContentToViewport && Content != null)
+                Content.sizeDelta = ScrollAxis == eScrollAxis.VERTICAL
+                    ? new Vector2(0f, ViewportSize)
+                    : new Vector2(ViewportSize, 0f);
 
             CheckLayoutGroupToContent();
             SetAlignmentValuesToContentLayout();
@@ -124,11 +122,6 @@ namespace RecycleScroll
         {
             base.Start();
 
-            if (m_loopScroll)
-                m_overwriteMovementType.Overwrite(ScrollRect.MovementType.Unrestricted);
-            else
-                m_overwriteMovementType.RemoveOverwrite();
-
             UpdateScrollbarSizeFromRect();
         }
 
@@ -140,6 +133,12 @@ namespace RecycleScroll
         {
             var scrollbar = MainAxisScrollbar;
             if (scrollbar == null) return;
+
+            // LoadData 후에는 Content 렉트가 윈도우 크기라 실측이 무의미하고,
+            // 이 함수는 레이아웃 리빌드 루프(SetLayoutVertical) 안에서도 호출되므로
+            // SetSize→Refresh(서브 핸들 SetActive) 경로를 타면 안 됨.
+            // 초기화 후 크기 갱신은 LoadData/Insert/LateUpdate(리빌드 밖)에서 수행
+            if (Application.isPlaying && m_isInitialized) return;
 
             float viewportSize = ViewportSize;
             float contentSize = ScrollAxis == eScrollAxis.VERTICAL

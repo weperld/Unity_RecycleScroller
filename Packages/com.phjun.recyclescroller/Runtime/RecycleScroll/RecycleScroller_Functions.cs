@@ -20,8 +20,11 @@ namespace RecycleScroll
 
             ExecuteInitializer(_params);
 
-            TopPadding = m_scrollerMode.GetTopPadding(m_spacing, m_padding, ScrollAxis);
-            BottomPadding = m_scrollerMode.GetBottomPadding(m_spacing, m_padding, ScrollAxis);
+            m_padding ??= new RectOffset();
+            TopPadding = m_scrollerMode.GetTopPadding(m_spacing,
+                ScrollAxis == eScrollAxis.VERTICAL ? m_padding.top : m_padding.left);
+            BottomPadding = m_scrollerMode.GetBottomPadding(m_spacing,
+                ScrollAxis == eScrollAxis.VERTICAL ? m_padding.bottom : m_padding.right);
 
             LayoutRebuilder.ForceRebuildLayoutImmediate(_RectTransform);
 
@@ -65,6 +68,9 @@ namespace RecycleScroll
         /// <returns>Content의 가장 처음으로부터 얼만큼 떨어져 있는 지 계산하여 반환</returns>
         private float CalculateDistanceTo(int cellIndex)
         {
+            // 빈 데이터 가드 — Clamp(0, 0, -1) → 딕셔너리 [-1] 조회 방지
+            if (m_cellCount == 0 || m_dict_groupIndexOfCell.Count == 0) return 0f;
+
             cellIndex = Mathf.Clamp(cellIndex, 0, m_dict_groupIndexOfCell.Count - 1);
             var groupIndex = m_dict_groupIndexOfCell[cellIndex];
             return m_dp_groupPos[groupIndex];
@@ -116,16 +122,6 @@ namespace RecycleScroll
             inst.transform.localPosition = Vector3.zero;
             inst.transform.localRotation = Quaternion.identity;
             return inst;
-        }
-
-        public float ConvertRealToShow(float realValue)
-        {
-            return m_scrollerMode.ConvertRealToShow(realValue, ShowingContentSize);
-        }
-
-        public float ConvertShowToReal(float showValue)
-        {
-            return m_scrollerMode.ConvertShowToReal(showValue, ShowingContentSize);
         }
 
         #endregion
@@ -225,24 +221,27 @@ namespace RecycleScroll
             m_padding ??= new();
 
             var copyPadding = new RectOffset(m_padding.left, m_padding.right, m_padding.top, m_padding.bottom);
-            if (m_loopScrollable)
+            var windowMode = Application.isPlaying && m_isInitialized;
+            if (windowMode)
             {
+                // 윈도우 모드: 주축 패딩·정렬은 좌표(가상 위치/anchoredPosition)가 담당하므로
+                // LayoutGroup에서는 주축 패딩 0 + 주축 시작 정렬 강제 (보조축 성분은 유지)
                 switch (ScrollAxis)
                 {
                     case eScrollAxis.VERTICAL:
-                        copyPadding.top = (int)TopPadding;
-                        copyPadding.bottom = (int)BottomPadding;
+                        copyPadding.top = 0;
+                        copyPadding.bottom = 0;
                         break;
                     case eScrollAxis.HORIZONTAL:
-                        copyPadding.left = (int)TopPadding;
-                        copyPadding.right = (int)BottomPadding;
+                        copyPadding.left = 0;
+                        copyPadding.right = 0;
                         break;
                 }
             }
 
             layoutGroup.padding = copyPadding;
             layoutGroup.spacing = Spacing;
-            layoutGroup.childAlignment = m_childAlignment;
+            layoutGroup.childAlignment = windowMode ? ForceMainAxisStartAlignment(m_childAlignment) : m_childAlignment;
             layoutGroup.reverseArrangement = m_reverse;
 
             switch (ScrollAxis)
@@ -263,6 +262,25 @@ namespace RecycleScroll
             layoutGroup.childScaleWidth = m_useChildScale.width;
             layoutGroup.childForceExpandHeight = ScrollAxis == eScrollAxis.HORIZONTAL || m_childForceExpand.height;
             layoutGroup.childForceExpandWidth = ScrollAxis == eScrollAxis.VERTICAL || m_childForceExpand.width;
+        }
+
+        /// <summary>주축 성분을 시작 정렬로 강제 (보조축 성분 유지) — 윈도우 배치 수식의 전제</summary>
+        private TextAnchor ForceMainAxisStartAlignment(TextAnchor anchor)
+        {
+            if (ScrollAxis == eScrollAxis.VERTICAL)
+                return anchor switch
+                {
+                    TextAnchor.UpperLeft or TextAnchor.MiddleLeft or TextAnchor.LowerLeft => TextAnchor.UpperLeft,
+                    TextAnchor.UpperCenter or TextAnchor.MiddleCenter or TextAnchor.LowerCenter => TextAnchor.UpperCenter,
+                    _ => TextAnchor.UpperRight,
+                };
+
+            return anchor switch
+            {
+                TextAnchor.UpperLeft or TextAnchor.UpperCenter or TextAnchor.UpperRight => TextAnchor.UpperLeft,
+                TextAnchor.MiddleLeft or TextAnchor.MiddleCenter or TextAnchor.MiddleRight => TextAnchor.MiddleLeft,
+                _ => TextAnchor.LowerLeft,
+            };
         }
 
         private Vector2 GetAlignmentPoint()
@@ -316,11 +334,21 @@ namespace RecycleScroll
 
         private void ResetContent_Size()
         {
-            var totalSize = RealContentSize;
+            var totalSize = ContentSize;
             var viewportSize = ViewportSize;
-            float axisSize = m_fitContentToViewport && totalSize < viewportSize
-                ? viewportSize
-                : totalSize;
+
+            // 윈도우 콘텐트: 보이는 영역 + 여유 슬롯(최대 그룹 + 간격)이면 충분.
+            // 콘텐트가 그보다 작으면 자연히 전체 크기로 수렴
+            float axisSize;
+            if (UseVirtualScroll)
+            {
+                var windowSize = Mathf.Min(totalSize, viewportSize + m_maxGroupSize + Spacing);
+                axisSize = m_fitContentToViewport && windowSize < viewportSize ? viewportSize : windowSize;
+            }
+            else
+            {
+                axisSize = m_fitContentToViewport && totalSize < viewportSize ? viewportSize : totalSize;
+            }
 
             Content.sizeDelta = ScrollAxis == eScrollAxis.VERTICAL
                 ? new Vector2(0f, axisSize)
@@ -380,20 +408,13 @@ namespace RecycleScroll
         /// </summary>
         private void OnScrollPositionChanged(Vector2 val)
         {
-            if (m_scrollerMode.NeedReposition(RealScrollPosition, FrontThreshold, BackThreshold, RealScrollSize))
-            {
-                var velocity = m_velocity;
-                ShowingScrollPosition = ShowingScrollPosition;
-                m_velocity = velocity;
-            }
-
             SetScrollbarValueWithoutNotify();
 
             UpdateCellView();
             m_onValueChanged?.Invoke(val);
             onScroll?.Invoke(val);
 
-            var currentPos = RealScrollPosition;
+            var currentPos = ScrollPosition;
             if (Mathf.Abs(currentPos - m_previousScrollPosition) > 0.01f)
             {
                 var direction = currentPos > m_previousScrollPosition
@@ -609,16 +630,21 @@ namespace RecycleScroll
         {
             duration = Mathf.Max(duration, 0f);
 
-            if (normalizedPos) pos = Mathf.Clamp01(pos + offset);
-            else pos = Mathf.Clamp(pos + offset, 0f, RealScrollSize) / RealScrollSize;
+            var scrollSize = ScrollSize;
+            var target = normalizedPos ? (pos + offset) * scrollSize : pos + offset;
+            var current = m_scrollerMode.Normalize(m_scrollPos, ContentSize);
+
+            // 목표를 이동량으로 환산 (비루프: 클램프, 루프: 최단거리 — wrap 경계 통과 허용)
+            var endScalar = current + m_scrollerMode.GetMoveDelta(current, target, ContentSize, scrollSize);
+            var endNormalized = scrollSize > 0f ? endScalar / scrollSize : 0f;
 
             if (duration <= 0f)
             {
-                RealNormalizedScrollPosition = pos;
+                NormalizedScrollPosition = endNormalized;
                 return;
             }
 
-            moveCorWhenDurationOverZero(pos, duration);
+            moveCorWhenDurationOverZero(endNormalized, duration);
         }
 
         /// <summary>
@@ -677,15 +703,38 @@ namespace RecycleScroll
 
         #region MoveToIndex_ViaViewportSizeAligned(Base)
 
+        /// <summary>
+        /// 모든 MoveToIndex/JumpToIndex 계열의 index는 '데이터 인덱스' 기준이다.
+        /// reverse 모드에서도 해당 데이터 셀이 보이는 시각 위치로 이동한다.
+        /// 시각(배치) 순서 기준으로 이동하려면 VisualIndexToDataIndex로 변환 후 호출할 것.
+        /// </summary>
         private void MoveToIndex_ViaViewportSizeAligned_Base(int index, float viewportNormalSize, Action<float> moveAction)
         {
             if (TryAddWaitBuffer_AndCheckCurrentState(() => MoveToIndex_ViaViewportSizeAligned_Base(index, viewportNormalSize, moveAction), out _)) return;
 
-            var pos = CalculateDistanceTo(index) - ViewportSize * viewportNormalSize;
-            pos = Mathf.Min(pos, RealScrollSize);
+            var pos = CalculateVisualDistanceTo(index) - ViewportSize * viewportNormalSize;
+            // 루프는 wrap 목표 허용 — 끝 클램프는 비루프에서만
+            if (m_scrollerMode.IsLoop == false) pos = Mathf.Min(pos, ScrollSize);
 
             moveAction(pos);
         }
+
+        /// <summary>데이터 인덱스 셀이 속한 그룹의 '시각' 시작 위치 (reverse면 미러 좌표)</summary>
+        private float CalculateVisualDistanceTo(int cellIndex)
+        {
+            var dataPos = CalculateDistanceTo(cellIndex);
+            if (m_reverse == false || m_cellCount == 0) return dataPos;
+
+            var groupIndex = m_dict_groupIndexOfCell[Mathf.Clamp(cellIndex, 0, m_cellCount - 1)];
+            return ContentSize - dataPos - m_list_groupData[groupIndex].size;
+        }
+
+        /// <summary>
+        /// 시각(배치) 순서 인덱스 → 데이터 인덱스. reverse면 역순 매핑, 아니면 동일.
+        /// MoveToIndex 계열을 시각 순서 기준으로 쓰고 싶을 때 사용
+        /// </summary>
+        public int VisualIndexToDataIndex(int visualIndex)
+            => m_reverse ? m_cellCount - 1 - visualIndex : visualIndex;
 
         public void MoveToIndex_ViaViewportSizeAligned(int index, Ease ease, float viewportNormalSize, float duration = 0f, float offset = 0f)
             => MoveToIndex_ViaViewportSizeAligned_Base(index, viewportNormalSize, p => MoveTo(p, ease, duration, false, offset));
@@ -811,23 +860,24 @@ namespace RecycleScroll
         }
 
         private int NextRealPageIndex
-            => GetNextPageIndex(FindRealClosestPageIndexFrom(PagePivotPosInScrollRect), IsLoopScrollable, RealPageCount);
+            => GetNextPageIndex(FindRealClosestPageIndexFrom(ScrollPosition), IsLoopScrollable, PageCount);
         private int PrevRealPageIndex
-            => GetPrevPageIndex(FindRealClosestPageIndexFrom(PagePivotPosInScrollRect), IsLoopScrollable, RealPageCount);
+            => GetPrevPageIndex(FindRealClosestPageIndexFrom(ScrollPosition), IsLoopScrollable, PageCount);
+
+        /// <summary>
+        /// 페이지 피벗이 뷰포트의 PagePivot 지점에 오도록 하는 스크롤 목표.
+        /// m_dp_pagePos는 항상 스크롤 좌표 기준 (reverse면 생성 시 재구성됨)
+        /// </summary>
+        private float GetPageTargetPosition(int pageIndex)
+            => GetPagePivotPos(pageIndex) - PagePivotPosInViewport;
 
         public void MoveToPage(int pageIndex)
-        {
-            var pagePosition = GetPagePivotPos(pageIndex);
-            MoveTo(pagePosition, m_pagingData.duration, false, m_pagingData.PagePivot);
-        }
+            => MoveTo_UsePagingEaseConfig(GetPageTargetPosition(pageIndex), m_pagingData.duration, false);
         public void MoveToNextPage() => MoveToPage(NextRealPageIndex);
         public void MoveToPrevPage() => MoveToPage(PrevRealPageIndex);
 
         public void JumpToPage(int pageIndex)
-        {
-            var pagePosition = GetPagePivotPos(pageIndex);
-            JumpTo(pagePosition);
-        }
+            => MoveTo(GetPageTargetPosition(pageIndex), 0f, false);
         public void JumpToNextPage() => JumpToPage(NextRealPageIndex);
         public void JumpToPrevPage() => JumpToPage(PrevRealPageIndex);
 
@@ -838,16 +888,16 @@ namespace RecycleScroll
         private IEnumerator Cor_MoveContent(float endPos, float duration, Func<float, float, float, float> evaluate)
         {
             var progress = 0f;
-            var startPos = RealNormalizedScrollPosition;
+            var startPos = NormalizedScrollPosition;
             while (progress < duration && Mathf.Approximately(progress, duration) == false)
             {
                 yield return null;
                 progress += Time.deltaTime;
                 var normalizeTime = progress / duration;
-                RealNormalizedScrollPosition = evaluate(startPos, endPos, normalizeTime);
+                NormalizedScrollPosition = evaluate(startPos, endPos, normalizeTime);
             }
 
-            RealNormalizedScrollPosition = endPos;
+            NormalizedScrollPosition = endPos;
             onEndEasing?.Invoke();
             m_corMoveContent = null;
         }
@@ -899,19 +949,25 @@ namespace RecycleScroll
 
         private void StartPagingCor()
         {
-            if (m_inertia) m_inertia = false;
+            // LoadData 전에는 페이지 데이터가 없고 순정 ScrollRect 동작을 보존해야 하므로 미동작
+            if (m_isInitialized == false) return;
 
-            var nearestPageIndex = FindRealClosestPageIndexFrom(PagePivotPosInScrollRect);
+            var nearestPageIndex = FindRealClosestPageIndexFrom(ScrollPosition);
             if (nearestPageIndex == -1) return;
 
-            var endPos = Mathf.Clamp01((GetPagePivotPos(nearestPageIndex) - PagePivotPosInViewport) / RealScrollSize);
+            var scrollSize = ScrollSize;
+            var target = GetPageTargetPosition(nearestPageIndex);
+            var current = m_scrollerMode.Normalize(m_scrollPos, ContentSize);
+            var endScalar = current + m_scrollerMode.GetMoveDelta(current, target, ContentSize, scrollSize);
+            var endPos = scrollSize > 0f ? endScalar / scrollSize : 0f;
             var duration = m_pagingData.duration;
             StartMoveContentCor(() => Cor_MoveContent(endPos, duration, (s, e, d) => m_pagingData.EvaluateEase(s, e, d)));
         }
 
         private int ConvertToShowPageIndex(int realPageIndex)
         {
-            return m_scrollerMode.ConvertToShowPageIndex(realPageIndex, RealPageCount);
+            // 단일 좌표계: 복제 페이지가 없어 실제 인덱스가 곧 표시 인덱스
+            return realPageIndex;
         }
 
         /// <summary>
@@ -919,7 +975,46 @@ namespace RecycleScroll
         /// </summary>
         /// <param name="pivot_real">검색 기준이 되는 실수형 좌표</param>
         /// <returns>페이지 포지션 리스트가 유효하지 않을 경우 -1을 반환하고, 유효한 경우 가장 가까운 페이지의 인덱스를 반환</returns>
-        private int FindRealClosestPageIndexFrom(float pivot_real) => m_dp_pagePos.FindClosestIndex(pivot_real);
+        /// <summary>
+        /// 현재 스크롤 위치에서 가장 가까운 '착지 지점'의 페이지.
+        /// 비루프는 스냅 목표를 [0, ScrollSize]로 클램프해 비교하므로 꼬리 페이지들은
+        /// 스크롤 끝으로 수렴 — 끝 근처에서 놓으면 마지막 페이지(끝 정렬)가 선택된다.
+        /// 루프는 원형 거리로 비교 (wrap 경계 정합)
+        /// </summary>
+        private int FindRealClosestPageIndexFrom(float currentPos)
+        {
+            var count = m_dp_pagePos.Count;
+            if (count == 0) return -1;
+
+            var contentSize = ContentSize;
+            var halfContent = contentSize * 0.5f;
+            var scrollSize = ScrollSize;
+            var isLoop = m_scrollerMode.IsLoop;
+            var index = -1;
+            var best = float.MaxValue;
+            for (int i = 0; i < count; i++)
+            {
+                var target = GetPageTargetPosition(i);
+                float dist;
+                if (isLoop)
+                {
+                    dist = Mathf.Abs(Mathf.Repeat(target - currentPos + halfContent, contentSize) - halfContent);
+                }
+                else
+                {
+                    target = Mathf.Clamp(target, 0f, scrollSize);
+                    dist = Mathf.Abs(target - currentPos);
+                }
+
+                if (dist < best)
+                {
+                    best = dist;
+                    index = i;
+                }
+            }
+
+            return index;
+        }
         private int FindShowingClosestPageIndexFrom(float pivot_real) => ConvertToShowPageIndex(FindRealClosestPageIndexFrom(pivot_real));
 
         private float GetPagePivotPos(int pageIndex)
@@ -933,8 +1028,9 @@ namespace RecycleScroll
         {
             if (m_dp_pagePos == null || m_dp_pagePos.Count == 0) return 0f;
             if (pageIndex < 0 || pageIndex >= m_dp_pagePos.Count) return 0f;
+            // reverse면 pagePos가 시각 좌표라 마지막 페이지 끝은 데이터 시작 쪽 패딩(TopPadding)
             return pageIndex == m_dp_pagePos.Count - 1
-                ? RealContentSize - BottomPadding - m_dp_pagePos[pageIndex]
+                ? ContentSize - (m_reverse ? TopPadding : BottomPadding) - m_dp_pagePos[pageIndex]
                 : m_dp_pagePos[pageIndex + 1] - m_dp_pagePos[pageIndex] - Spacing;
         }
 
@@ -1013,7 +1109,12 @@ namespace RecycleScroll
 
         private void RecalculateForInsert(int targetCellIndex, int prevCellCount)
         {
-            if (m_scrollerMode.CanDoPartialRecalc(m_cellCount, prevCellCount))
+            // 복제 그룹이 사라져 루프도 부분 재계산 가능.
+            // 단 reverse+고정 그룹 카운트는 나머지 셀이 '첫' 그룹에 있어
+            // 셀 수 변화 시 앞쪽 파티션부터 달라지므로 전체 재계산
+            var canPartialRecalc = m_cellCount > 0 && prevCellCount > 0
+                && (m_reverse == false || FixCellCountInGroup == false);
+            if (canPartialRecalc)
             {
                 // 맨 뒤 삽입(AddToEnd)은 targetCellIndex == prevCellCount라 딕셔너리에 키가 없음 → 마지막 셀 기준으로 조회
                 var lookupCellIndex = Mathf.Min(targetCellIndex, prevCellCount - 1);
@@ -1030,7 +1131,7 @@ namespace RecycleScroll
                     var frontGroupIndex = groupIndex - 1;
                     m_realContentSize = m_dp_groupPos[frontGroupIndex] + m_list_groupData[frontGroupIndex].size + Spacing + BottomPadding;
                 }
-                else ResetRealContentSize();
+                else ResetContentSizeValue();
 
                 // 페이지 제거 범위는 그룹 리스트를 자르기 전에 계산.
                 // 시작 그룹이 groupIndex 이상인 페이지만 무효 — 그 앞 페이지들의 위치는 유지되는 그룹 기준이라 유효
@@ -1058,12 +1159,14 @@ namespace RecycleScroll
             }
             else
             {
-                ResetRealContentSize();
+                ResetContentSizeValue();
                 ResetCollectionsForInsert();
                 CalculateTotalScrollSize(m_cellCount);
             }
 
             ResetContent_Size();
+            ClampScrollPosAfterDataChange();
+            SetScrollbarSize();
             ReloadCellView();
         }
 
@@ -1092,14 +1195,14 @@ namespace RecycleScroll
 
             Scrollbar.SetSize(size);
         }
-        private void SetScrollbarSize() => SetScrollbarSize(ShowingContentSize > 0f ? ViewportSize / ShowingContentSize : 1f);
+        private void SetScrollbarSize() => SetScrollbarSize(ContentSize > 0f ? ViewportSize / ContentSize : 1f);
 
         private void SetScrollbarValueWithoutNotify()
         {
             if (Scrollbar == null) return;
 
-            float normalizedPos = m_scrollerMode.GetScrollbarNormalizedPosition(
-                ShowingNormalizedScrollPosition, RealNormalizedScrollPosition, ShowingScrollSize);
+            // 루프에서는 wrap 값이라 1 초과 가능 — 서브 핸들 wrap 시각화가 소비
+            float normalizedPos = NormalizedScrollPosition;
 
             Scrollbar.SetValueWithoutNotify(ScrollAxis is eScrollAxis.VERTICAL
                 ? 1f - normalizedPos
@@ -1113,13 +1216,15 @@ namespace RecycleScroll
         /// </summary>
         private void OnScrollbarValueChanged(float scrollbarValue)
         {
+            // 사용자 스크롤바 입력(클릭/드래그)은 진행 중인 이동·스냅 애니메이션을 취소
+            // (코루틴의 자체 갱신은 SetValueWithoutNotify 경로라 여기로 들어오지 않음)
+            StopAllMoveCor();
+
             float normalizedValue = ScrollAxis is eScrollAxis.VERTICAL
                 ? 1f - scrollbarValue
                 : scrollbarValue;
 
-            m_scrollerMode.ApplyScrollbarValue(normalizedValue,
-                v => ShowingNormalizedScrollPosition = v,
-                v => RealNormalizedScrollPosition = v);
+            NormalizedScrollPosition = normalizedValue;
         }
 
         private void OnBeginDragForScrollbar(PointerEventData _)
