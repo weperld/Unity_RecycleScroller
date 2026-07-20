@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2026-07-20
+
+### Fixed
+- **`EditorDrawerHelper` 의 NullReferenceException 으로 인스펙터 그리기가 중단되던 문제** — 스크립트가 Missing 이거나 이미 파괴된 오브젝트를 그릴 때 `SerializedProperty.serializedObject.targetObject` 가 `null` 이 되는데, 이를 막지 않아 예외가 인스펙터 전체를 중단시켰다. 커스텀 인스펙터를 쓰는 프로젝트에서는 컴포넌트가 아예 표시되지 않아 Missing 처럼 보였다.
+
+  가드를 넣은 곳:
+  - `GetFieldInfoFromProperty` — `targetObject` 가 null 이면 `null` 반환
+  - `GetFieldInfoFromProperty` — 배열/리스트 경로에서 필드를 찾지 못하면 `null` 반환 (비배열 경로에는 이미 있던 검사가 여기엔 빠져 있었다)
+  - `GetCustomPropertyDrawerType` / `HasCustomPropertyDrawer` — `fieldInfo` 가 null 이면 각각 `null` / `false` 반환
+
+  이 함수들은 패키지 밖에서도 호출될 수 있는 `public` API 이므로, 호출 측이 아니라 여기서 막는다.
+
 ## [3.0.0] - 2026-07-20
 
 ### Removed (Breaking)

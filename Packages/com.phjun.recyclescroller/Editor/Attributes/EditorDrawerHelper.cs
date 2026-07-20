@@ -123,6 +123,8 @@ public static partial class EditorDrawerHelper
     
     public static bool HasCustomPropertyDrawer(FieldInfo fieldInfo)
     {
+        if (fieldInfo == null) return false;
+
         var internalEditorUtilityType = typeof(PropertyDrawer).Assembly.GetType("UnityEditor.ScriptAttributeUtility");
         var getDrawerTypeForTypeMethod = internalEditorUtilityType.GetMethod("GetDrawerTypeForType", BindingFlags.Static | BindingFlags.NonPublic);
         var drawerType = getDrawerTypeForTypeMethod.Invoke(null, new object[] { fieldInfo.FieldType });
@@ -132,6 +134,8 @@ public static partial class EditorDrawerHelper
     
     public static Type GetCustomPropertyDrawerType(FieldInfo fieldInfo)
     {
+        if (fieldInfo == null) return null;
+
         var scriptAttributeUtilityType = typeof(PropertyDrawer).Assembly.GetType("UnityEditor.ScriptAttributeUtility");
         var getDrawerTypeForTypeMethod = scriptAttributeUtilityType.GetMethod("GetDrawerTypeForType", BindingFlags.Static | BindingFlags.NonPublic);
         
@@ -167,7 +171,13 @@ public static partial class EditorDrawerHelper
     
     public static FieldInfo GetFieldInfoFromProperty(SerializedProperty prop)
     {
-        object obj = prop.serializedObject.targetObject;
+        if (prop == null || prop.serializedObject == null) return null;
+
+        // 스크립트가 Missing 인 오브젝트나 이미 파괴된 오브젝트를 그릴 때 targetObject 가 null 이 된다.
+        // 여기서 막지 않으면 인스펙터 그리기가 예외로 중단되어 컴포넌트가 아예 표시되지 않는다.
+        var obj = prop.serializedObject.targetObject;
+        if (obj == null) return null;
+
         Type objType = obj.GetType();
         FieldInfo field = null;
         string path = prop.propertyPath.Replace(".Array.data[", "[");
@@ -179,6 +189,8 @@ public static partial class EditorDrawerHelper
             {
                 string elementName = element.Substring(0, element.IndexOf("["));
                 field = objType.GetField(elementName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (field == null) return null;
+
                 objType = field.FieldType;
                 
                 if (objType.IsArray)
