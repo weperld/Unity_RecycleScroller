@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-07-20
+
+### Added
+- **커스텀 템플릿 생성 메뉴** — 임포트한 프로젝트에서 자체 프리팹을 `GameObject/UI/RecycleScroll` 메뉴에 생성 항목으로 등록 가능. 최대 20개
+  - 설정 창: `Tools > RecycleScroller > 템플릿 설정`
+  - 설정 저장: `ProjectSettings/RecycleScrollerTemplates.asset` (프로젝트별로 유효하며 git 으로 팀 공유됨)
+  - 템플릿마다 프리팹 / 메뉴 이름 / 생성될 오브젝트 이름 / 언팩 방식(완전 Unpack · 최상위만 Unpack · Unpack 안 함)을 지정
+  - 이름을 비우면 기본 명칭으로 폴백 — 메뉴는 `RecycleScroller Template01 Create` 형식, 오브젝트는 프리팹 이름
+  - 드래그로 순서 변경 가능하며 그 순서가 메뉴 표시 순서에 반영됨
+  - 적용 전 변경 사항은 좌측 컬러 바로 표시(추가=초록, 변경=노랑)되고 `되돌리기`로 복구 가능
+  - RecycleScroller 계열이 아닌 임의의 UI 프리팹도 등록 가능
+
+### Changed
+- **오브젝트 생성 시 형제 중 이름이 겹치면 `(1)` 이 붙는다** — Unity 표준 UI 생성 메뉴와 동일한 동작. 기존 `Recycle Scroll View` / `Recycle Scrollbar` 메뉴에도 적용되므로 2.0.0 까지와 동작이 다름
+- 생성 시 캔버스 자동 생성 · 오브젝트 생성 · 언팩이 하나의 Undo 그룹으로 묶여 `Ctrl+Z` 한 번에 정리됨
+
+### 구현 참고
+`MenuItem` 이름은 컴파일 타임 상수이고 런타임 등록 API인 `UnityEditor.Menu.AddMenuItem` 은 internal 이라, 설정 적용 시점에 `Assets/RecycleScroller.Generated/` 에 메뉴 코드를 생성하는 방식을 사용한다. 이 폴더는 설정에서 언제든 재생성되므로 직접 수정하지 않는다.
+
 ## [2.0.0] - 2026-07-18
 
 ### 아키텍처 변경 (Breaking)
