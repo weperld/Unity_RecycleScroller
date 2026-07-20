@@ -251,6 +251,18 @@ public class RecycleScrollerEditor : Editor
                         "주축(셀 재활용 방향) RecycleScrollbar만 활성화됩니다.\n"
                         + "반대축 스크롤바는 자동으로 비활성화됩니다.",
                         MessageType.Info, Color.white);
+
+                    var expandViewport = m_scrollbarVisibility.enumValueIndex
+                        == (int)UnityEngine.UI.ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport;
+                    if (expandViewport && scroller.FixCellCountInGroup == false)
+                        EditorDrawerHelper.DrawCustomHelpBox(
+                            "AutoHideAndExpandViewport + 유동 셀 개수 조합에서는 그룹이 뷰포트를 넘칠 수 있습니다.\n"
+                            + "이 옵션은 스크롤이 필요해진 뒤에야 Viewport를 스크롤바 두께만큼 줄이는데,\n"
+                            + "그룹당 셀 개수는 그 전에 계산되므로 스크롤바 두께만큼 초과 배치됩니다.\n"
+                            + "레이아웃이 정확해야 한다면 Visibility를 Permanent 또는 AutoHide로 두거나,\n"
+                            + "고정 셀 개수를 사용하세요.",
+                            MessageType.Warning, Color.white);
+
                     EditorGUI.EndDisabledGroup();
                 }
             }, scrollbarSummary);
