@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-07-20
+
+### Fixed
+- **유동 셀 개수 모드에서 그룹이 뷰포트 보조축을 넘어가던 문제** — 그룹에 셀을 하나 더 넣을 수 있는지 판정할 때 셀 보조축 크기의 합만 비교하고, 실제 배치에 적용되는 `Spacing In Group` 을 계산에 넣지 않았다. 그래서 셀이 `n` 개인 그룹은 항상 간격 × (n-1) 만큼 초과 배치됐다.
+
+  판정식을 실제 레이아웃과 일치시켰다.
+
+  ```
+  Σ셀 보조축 + Spacing In Group × (n-1) ≤ 뷰포트 보조축 − 보조축 패딩
+  ```
+
+  셀 하나만으로 이미 폭을 넘는 경우 그 셀만 배치하고 다음 그룹으로 넘어가는 동작은 그대로다.
+
+- **그룹 폭 기준값이 갱신되지 않던 문제** — `m_maxGroupWidth` 를 `Init()` 시점에 한 번만 계산해서, 이후 뷰포트 크기나 패딩이 바뀐 뒤 `LoadData` 를 다시 호출해도 낡은 값으로 그룹을 나눴다. 스크롤 사이즈 계산 직전(메인 스레드)마다 다시 구하도록 바꿨다.
+
+### Added
+- **스크롤바 `Visibility` 인스펙터 경고 도움말** — `AutoHideAndExpandViewport` 는 스크롤이 필요해진 뒤에야 Viewport 를 스크롤바 두께만큼 축소하는데, 그룹당 셀 개수는 그 전에 계산된다. 이 순서 때문에 유동 셀 개수 모드와 조합하면 그룹이 스크롤바 두께만큼 뷰포트를 넘칠 수 있다.
+
+  해당 조합일 때만 인스펙터에 경고와 대안(`Permanent` / `AutoHide` 사용, 또는 고정 셀 개수 사용)을 표시한다.
+
 ## [3.0.1] - 2026-07-20
 
 ### Fixed
