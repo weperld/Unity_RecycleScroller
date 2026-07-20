@@ -43,9 +43,9 @@ public class RecycleScrollViewCreator : MonoBehaviour
 
         var undoGroup = BeginUndoGroup();
 
-        var parent = FindOrCreateCanvas_ReturnParent(Selection.activeGameObject);
+        var parent = ResolveTemplateParent(entry.m_prefab, Selection.activeGameObject);
 
-        var instance = PrefabUtility.InstantiatePrefab(entry.m_prefab, parent.transform) as GameObject;
+        var instance = InstantiateUnder(entry.m_prefab, parent) as GameObject;
         if (instance == null)
         {
             Debug.LogError($"[RecycleScroller] 프리팹 '{entry.m_prefab.name}' 인스턴스 생성에 실패했습니다.");
@@ -58,6 +58,28 @@ public class RecycleScrollViewCreator : MonoBehaviour
         Unpack(instance, entry.m_unpackMode);
 
         EndUndoGroup(undoGroup, instance.name);
+    }
+
+    /// <summary>
+    /// UI 프리팹만 Canvas 를 필요로 한다. RectTransform 이 없는 프리팹까지 Canvas 로 넣으면
+    /// 3D 오브젝트가 UI 계층에 끌려 들어가므로, 그런 경우는 선택한 오브젝트 하위에 만든다.
+    /// </summary>
+    internal static bool NeedsCanvas(GameObject prefab)
+        => prefab != null && prefab.GetComponent<RectTransform>() != null;
+
+    private static Transform ResolveTemplateParent(GameObject prefab, GameObject selectedObj)
+    {
+        if (NeedsCanvas(prefab)) return FindOrCreateCanvas_ReturnParent(selectedObj).transform;
+
+        // 선택이 없으면 씬 루트에 생성한다 (Unity 의 3D Object 생성 메뉴와 같은 동작).
+        return selectedObj == null ? null : selectedObj.transform;
+    }
+
+    private static Object InstantiateUnder(GameObject prefab, Transform parent)
+    {
+        if (parent == null) return PrefabUtility.InstantiatePrefab(prefab);
+
+        return PrefabUtility.InstantiatePrefab(prefab, parent);
     }
 
     /// <summary>생성 마무리 — 이름 지정, 형제 중복 회피, 선택, Undo 등록. 모든 생성 경로가 공유한다.</summary>

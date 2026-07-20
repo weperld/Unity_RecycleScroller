@@ -50,7 +50,10 @@ namespace RecycleScroll.Editor
 
             EditorGUILayout.HelpBox(
                 "여기에 등록한 프리팹이 Hierarchy 우클릭 > UI > RecycleScroll 메뉴에 생성 항목으로 추가됩니다.\n" +
-                "'적용'을 눌러야 저장되며, 저장 시 메뉴 코드가 다시 생성되어 컴파일이 한 번 발생합니다.",
+                "'적용'을 눌러야 저장되며, 저장 시 메뉴 코드가 다시 생성되어 컴파일이 한 번 발생합니다.\n\n" +
+                "생성 위치는 프리팹 종류에 따라 갈립니다.\n" +
+                "· UI 프리팹(RectTransform 보유) — Canvas 하위에 생성되며, Canvas 가 없으면 새로 만듭니다.\n" +
+                "· 그 외 프리팹 — 선택한 오브젝트 하위에 생성되고, 선택이 없으면 씬 루트에 생성됩니다.",
                 MessageType.Info);
 
             EditorGUILayout.Space(4f);

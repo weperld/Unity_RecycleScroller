@@ -137,6 +137,23 @@ namespace RecycleScroll.Editor.Tests
             Assert.AreEqual(PrefabUnpackMode.Completely, RecycleScrollViewCreator.ToPrefabUnpackMode(TemplateUnpackMode.Completely));
         }
 
+        // --- 생성 위치 판정 ---
+
+        [Test]
+        public void UI_프리팹만_Canvas를_필요로_한다()
+        {
+            var ui = new GameObject("UIPrefabStub", typeof(RectTransform));
+            m_created.Add(ui);
+
+            var nonUi = new GameObject("PlainPrefabStub");
+            m_created.Add(nonUi);
+
+            Assert.IsTrue(RecycleScrollViewCreator.NeedsCanvas(ui));
+            Assert.IsFalse(RecycleScrollViewCreator.NeedsCanvas(nonUi),
+                "RectTransform 이 없는 프리팹까지 Canvas 로 넣으면 3D 오브젝트가 UI 계층에 끌려 들어간다.");
+            Assert.IsFalse(RecycleScrollViewCreator.NeedsCanvas(null));
+        }
+
         // --- 엔트리 값 비교 (하이라이트 판정의 토대) ---
 
         [Test]
