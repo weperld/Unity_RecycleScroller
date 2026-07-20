@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-07-20
+
+### Fixed
+- **UI가 아닌 프리팹이 Canvas 하위로 생성되던 문제 수정** — 템플릿은 임의의 프리팹을 받을 수 있는데 생성 위치가 항상 Canvas 하위로 고정되어 있어, 3D 오브젝트 같은 프리팹이 UI 계층에 끌려 들어갔다. `RectTransform` 유무로 분기하여 UI 프리팹만 Canvas 하위에 만들고, 그 외에는 선택한 오브젝트 하위(선택이 없으면 씬 루트)에 생성한다 — Unity 의 3D Object 생성 메뉴와 같은 동작
+
+### Changed
+- 설정 창 도움말에 생성 위치 규칙 명시
+
 ## [2.1.0] - 2026-07-20
 
 ### Added
