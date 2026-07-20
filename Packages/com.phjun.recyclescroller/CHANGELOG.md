@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-07-20
+
+### Removed (Breaking)
+- **커스텀 템플릿 생성 메뉴 기능을 전부 제거**했다. 이 기능은 스크롤러와 아무 의존 관계가 없는 범용 에디터 도구였으므로 별도 패키지로 분리했다.
+
+  → **[Prefab Template Menu](https://github.com/weperld/Unity_PrefabTemplateMenu)**
+
+  ```
+  https://github.com/weperld/Unity_PrefabTemplateMenu.git?path=Packages/com.phjun.prefabtemplatemenu
+  ```
+
+  분리된 패키지에는 **그룹**(메뉴 코드의 파일·네임스페이스 분리 단위), **템플릿별 메뉴 경로 지정**, **생성 코드 전용 asmdef**(재컴파일 범위 축소)가 추가되어 있다.
+
+  제거된 것: `Tools > RecycleScroller > 템플릿 설정` 창, `ProjectSettings/RecycleScrollerTemplates.asset` 을 읽는 코드, `Assets/RecycleScroller.Generated/` 생성 기능
+
+### 마이그레이션
+UPM 은 `package.json` 의 의존성에 Git URL 을 넣을 수 없으므로, 템플릿 기능이 필요하면 위 URL 을 **직접 추가**해야 한다.
+
+2.x 를 쓰던 프로젝트에는 다음이 남는다. 둘 다 지워도 되고, 새 패키지에서 다시 설정해도 된다.
+
+| 남는 것 | 처리 |
+|---|---|
+| `Assets/RecycleScroller.Generated/` | 옛 메뉴를 한 번 눌러 안내창의 **'생성 폴더 삭제'** 를 누르거나 직접 삭제 |
+| `ProjectSettings/RecycleScrollerTemplates.asset` | 읽는 코드가 없으므로 무해. 직접 삭제 |
+
+`RecycleScrollViewCreator.CreateFromTemplate(MenuCommand, int)` 는 **안내용 스텁으로 남겨 두었다.** 지우면 옛 생성 코드가 남은 프로젝트가 업데이트 직후 컴파일 에러로 멈추고, 그러면 에디터가 돌지 않아 그 코드를 지울 수도 없게 된다.
+
+### 유지
+- 오브젝트 생성 시 형제 중복 이름 `(1)` 부여, 캔버스 생성·오브젝트 생성을 하나의 Undo 그룹으로 묶는 동작은 그대로 남는다 (2.1.0 에서 기존 3개 메뉴에도 적용된 개선이며 템플릿 기능과 무관하다)
+
 ## [2.1.1] - 2026-07-20
 
 ### Fixed
