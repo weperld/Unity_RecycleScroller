@@ -314,7 +314,8 @@ namespace RecycleScroll
             SetCellSizeList(m_cellCount);
             if (CheckContinuableLoadDataAsync(token, loadDataCallbacks, callID) == false) return;
 
-            // 총 스크롤 영역 사이즈 계산
+            // 총 스크롤 영역 사이즈 계산 (스레드풀 진입 전 뷰포트 기준값 갱신 — Viewport.rect는 메인 스레드 전용)
+            ResetMaxGroupWidthValue();
             var viewportSize = ViewportSize;
             await CalculateTotalScrollSizeForAsync(m_cellCount, token, viewportSize);
             if (CheckContinuableLoadDataAsync(token, loadDataCallbacks, callID) == false) return;
@@ -410,6 +411,7 @@ namespace RecycleScroll
 
         private void CalculateTotalScrollSize(int cellCount, CancellationToken? token = null, int startIndex = 0)
         {
+            ResetMaxGroupWidthValue();
             CalculateTotalScrollSize(cellCount, m_maxGroupWidth, token, startIndex);
 
             AddEmptySpaceToLastGroupIfNeed();
@@ -941,7 +943,8 @@ namespace RecycleScroll
             bool CalculateCellGroupData(int index, ref float refGroupSize, ref float refCellsWidthInGroup, ref CellGroupData refNewGroup, bool checkMaxWidth)
             {
                 var l_sizeVec = m_list_cellSizeVec[index];
-                var nextCellWidth = l_sizeVec.CrossAxisSize;
+                // 그룹 내 셀은 항상 2번째 이후이므로 앞 셀과의 간격을 폭에 포함 (실제 LayoutGroup 배치와 일치)
+                var nextCellWidth = m_spacingInGroup + l_sizeVec.CrossAxisSize;
 
                 // 너비가 최대 그룹 너비를 넘는지 확인
                 if (checkMaxWidth && refCellsWidthInGroup + nextCellWidth > maxGroupWidth) return false;
