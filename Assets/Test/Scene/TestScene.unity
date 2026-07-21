@@ -182,8 +182,8 @@ MonoBehaviour:
   m_ChildForceExpandHeight: 1
   m_ChildControlWidth: 0
   m_ChildControlHeight: 1
-  m_ChildScaleWidth: 0
-  m_ChildScaleHeight: 0
+  m_ChildScaleWidth: 1
+  m_ChildScaleHeight: 1
   m_ReverseArrangement: 1
 --- !u!1 &308295864
 GameObject:
@@ -840,8 +840,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_scroller: {fileID: 688230564}
   m_cellCount: 102
-  m_cellMainSizeRange: {x: 50, y: 100}
-  m_cellCrossSizeRange: {x: 30, y: 60}
+  m_cellMainSizeRange: {x: 100, y: 100}
+  m_cellCrossSizeRange: {x: 50, y: 50}
+  m_cellScale: {x: 0.8, y: 1.2}
   m_jumpToIndex: 0
   m_insertIndex: 0
   m_removeIndex: 0
@@ -882,8 +883,8 @@ MonoBehaviour:
     width: 0
     height: 0
   m_useChildScale:
-    width: 0
-    height: 0
+    width: 1
+    height: 1
   m_childForceExpand:
     width: 0
     height: 0
@@ -1093,8 +1094,8 @@ MonoBehaviour:
   m_ChildForceExpandHeight: 0
   m_ChildControlWidth: 0
   m_ChildControlHeight: 0
-  m_ChildScaleWidth: 0
-  m_ChildScaleHeight: 0
+  m_ChildScaleWidth: 1
+  m_ChildScaleHeight: 1
   m_ReverseArrangement: 1
 --- !u!1 &891971857
 GameObject:
