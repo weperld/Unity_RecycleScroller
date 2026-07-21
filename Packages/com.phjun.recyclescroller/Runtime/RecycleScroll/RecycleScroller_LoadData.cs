@@ -706,12 +706,6 @@ namespace RecycleScroll
                     var getCell = isAlreadyActivatedCell ? m_dict_activatedCells[j] : del.GetCell(this, j, lastCellViewIndex);
                     if (getCell == false) continue;
 
-                    // 선언된 셀 크기(GetCellRect)를 렉트에 반영 — 가변 크기 셀 지원
-                    var cellSizeVec = m_list_cellSizeVec[j];
-                    getCell.UpdateCellSize(ScrollAxis == eScrollAxis.VERTICAL
-                        ? new Vector2(cellSizeVec.CrossAxisSize, cellSizeVec.Size)
-                        : new Vector2(cellSizeVec.Size, cellSizeVec.CrossAxisSize));
-
                     if (isAlreadyActivatedCell == false)
                     {
 #if UNITY_EDITOR

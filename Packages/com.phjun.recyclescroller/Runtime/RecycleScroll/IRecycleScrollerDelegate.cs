@@ -82,6 +82,11 @@ namespace RecycleScroll
         /// <returns></returns>
         public RecycleScrollerCell GetCell(RecycleScroller scroller, int dataIndex, int cellViewIndex);
         public int GetCellCount(RecycleScroller scroller);
+        /// <summary>
+        /// 셀이 차지할 크기를 "선언"한다. 반환값은 스크롤러의 배치 공간 계산 전용<para/>
+        /// 스크롤러는 셀의 RectTransform을 수정하지 않는다. 셀 크기 세팅은 GetCell 구현 측 책임
+        /// (필요 시 <see cref="RecycleScrollerCell.UpdateCellSize"/> 를 직접 호출할 것)
+        /// </summary>
         public RSCellRect GetCellRect(RecycleScroller scroller, int dataIndex);
     }
     
