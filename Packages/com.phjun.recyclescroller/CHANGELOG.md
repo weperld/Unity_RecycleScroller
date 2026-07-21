@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-07-21
+
+### Fixed
+- **`Use Child Scale` 사용 시 셀 스케일이 이중으로 적용되던 문제** — 스크롤러가 `GetCellRect` 의 스케일 적용값(`ToScaledValues`)을 셀의 `sizeDelta` 에 되먹이고 있었다. 그 위에 셀의 `localScale` 이 다시 곱해져, 스크롤러가 예약한 공간과 실제로 그려지는 셀 크기가 어긋났다.
+
+  예) 셀 300×200, `localScale` 0.8, `Use Child Scale` 전부 ON
+
+  | | 수정 전 | 수정 후 |
+  |---|---|---|
+  | 셀 `sizeDelta` | 240×160 (덮어써짐) | 300×200 (프리팹 값 유지) |
+  | 화면상 실제 크기 | 192×128 | 240×160 |
+  | 스크롤러 예약 공간 | 240×160 | 240×160 |
+
+  셀 `RectTransform` 의 소유자는 프리팹/사용자 코드이며, 스크롤러는 `GetCellRect` 가 선언한 크기를 배치 공간 계산에만 사용한다. 이 계약을 복원했다.
+
+### Changed
+- **셀마다 크기가 다른 경우 `GetCell` 에서 크기를 직접 세팅해야 한다.** 스크롤러가 대신 세팅해 주던 동작이 제거됐다. 재활용된 셀에는 이전 인덱스의 크기가 남아 있으므로 다음과 같이 세팅한다.
+
+  ```csharp
+  var size = GetCellRect(scroller, dataIndex).ToUnScaledValues;
+  cell.UpdateCellSize(scroller.ScrollAxis == eScrollAxis.VERTICAL
+      ? new Vector2(size.CrossAxisSize, size.Size)
+      : new Vector2(size.Size, size.CrossAxisSize));
+  ```
+
+  `UpdateCellSize` 에는 반드시 스케일 적용 전 값(`ToUnScaledValues`)을 넣는다. `ToScaledValues` 를 넣으면 `localScale` 과 이중 적용된다. 모든 셀이 같은 크기라면 프리팹 값이 그대로 쓰이므로 별도 작업이 필요 없다.
+
+### Added
+- **Basic Usage 샘플에 델리게이트 구현 예제 추가** (`BasicUsageSample.cs`) — 가변 크기 셀의 크기 세팅과 `Use Child Scale` 연동 방법을 코드로 제시
+
+### Documentation
+- 셀 크기 소유권과 `Use Child Scale` 사용법을 README에 문서화. `ToUnScaledValues` / `ToScaledValues` 의 용도 구분 명시
+
 ## [3.1.0] - 2026-07-20
 
 ### Fixed
