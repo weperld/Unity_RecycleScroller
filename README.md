@@ -110,6 +110,15 @@ public class MyScroller : MonoBehaviour, IRecycleScrollerDelegate
     public RecycleScrollerCell GetCell(RecycleScroller scroller, int dataIndex, int cellViewIndex)
     {
         var cell = scroller.GetCellInstance(cellPrefab, dataIndex);
+
+        // 셀 크기 세팅은 델리게이트 책임 (스크롤러는 셀 RectTransform을 수정하지 않음).
+        // 셀마다 크기가 다르다면 반드시 여기서 세팅할 것 — 재활용된 셀에는
+        // 이전 인덱스의 크기가 남아 있다. 모든 셀이 같은 크기라면 생략 가능
+        var size = GetCellRect(scroller, dataIndex).ToUnScaledValues;
+        cell.UpdateCellSize(scroller.ScrollAxis == eScrollAxis.VERTICAL
+            ? new Vector2(size.CrossAxisSize, size.Size)
+            : new Vector2(size.Size, size.CrossAxisSize));
+
         // 셀 데이터 업데이트
         return cell;
     }
@@ -118,7 +127,8 @@ public class MyScroller : MonoBehaviour, IRecycleScrollerDelegate
 
     public RSCellRect GetCellRect(RecycleScroller scroller, int dataIndex)
     {
-        return new RSCellRect(100f, 400f); // size, width
+        // 셀이 차지할 크기를 "선언" — 스크롤러의 배치 공간 계산에만 쓰인다
+        return new RSCellRect(100f, 400f); // size(주축), crossAxisSize(보조축)
     }
 }
 ```
@@ -195,6 +205,37 @@ callbacks.Complete += (result) =>
 ### Cell Grouping
 
 Grid 형태로 아이템을 배치합니다. Inspector에서 `Cell Group Configs`로 설정합니다.
+
+### Cell Size & Use Child Scale
+
+셀 크기의 소유권은 **사용자**에게 있습니다. 스크롤러는 `GetCellRect`가 선언한 크기를 배치 공간
+계산에만 사용하며, 셀의 `RectTransform`을 직접 수정하지 않습니다.
+
+- 모든 셀이 같은 크기 → 프리팹의 크기가 그대로 쓰입니다. 별도 작업 불필요
+- 셀마다 크기가 다름 → `GetCell`에서 `cell.UpdateCellSize(...)`로 직접 세팅해야 합니다
+  (재활용된 셀에는 이전 인덱스의 크기가 남아 있습니다)
+
+셀 프리팹에 `localScale`을 적용했다면 Inspector의 `Use Child Scale`을 켜서 스크롤러가 그만큼
+줄어든 크기로 공간을 잡도록 합니다. 이때 `GetCellRect`도 스케일을 함께 선언해야 합니다.
+
+```csharp
+public RSCellRect GetCellRect(RecycleScroller scroller, int dataIndex)
+{
+    // 방법 1: 프리팹에서 크기와 스케일을 그대로 읽기 (Use Child Scale 설정을 자동 반영)
+    return new RSCellRect(cellPrefab.rectTransform, scroller);
+
+    // 방법 2: 직접 선언 — 주축/보조축 크기와 각 축의 스케일
+    // return new RSCellRect(100f, 400f, 0.8f, 0.8f);
+}
+```
+
+`UpdateCellSize`에는 반드시 **스케일 적용 전** 값(`ToUnScaledValues`)을 넣으세요.
+`ToScaledValues`를 넣으면 `localScale`과 이중으로 곱해집니다.
+
+| 프로퍼티 | 값 | 용도 |
+|---|---|---|
+| `ToUnScaledValues` | 선언한 원본 크기 | 셀 `RectTransform`에 세팅할 값 |
+| `ToScaledValues` | 원본 × 스케일 | 스크롤러가 예약하는 실제 배치 공간 |
 
 ### Cell Lifecycle Callbacks
 
