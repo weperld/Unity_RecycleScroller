@@ -19,6 +19,8 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
     [SerializeField] private Vector2 m_cellMainSizeRange = new(100f, 100f);
     [Tooltip("보조축 크기 범위 (min == max면 균일)")]
     [SerializeField] private Vector2 m_cellCrossSizeRange = new(300f, 300f);
+    [Tooltip("셀 프리팹의 localScale — 스크롤러의 Use Child Scale 검증용")]
+    [SerializeField] private Vector2 m_cellScale = Vector2.one;
 
     private float CellMainSize => m_cellMainSizeRange.x;
     private float CellCrossSize => m_cellCrossSizeRange.x;
@@ -63,7 +65,43 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
                 + $"\n  - ContentSize: {m_scroller.ContentSize}"
                 + $"\n  - ViewportSize: {m_scroller.ViewportSize}");
             LogScrollbarState();
+            LogCellRectVerification();
         };
+    }
+
+    /// <summary>
+    /// 셀 크기 검증 — 델리게이트가 세팅한 rect에 localScale이 곱해진 결과가
+    /// 스크롤러가 예약한 공간(GetCellRect의 스케일 적용값)과 일치해야 한다.
+    /// 어긋나면 스케일이 이중 적용됐거나 누군가 rect를 덮어쓴 것
+    /// </summary>
+    private void LogCellRectVerification()
+    {
+        var cells = m_scroller.GetAllActivatedCells();
+        if (cells.Count == 0) return;
+
+        var axis = m_scroller.ScrollAxis;
+        foreach (var pair in cells)
+        {
+            var rtf = pair.Value.rectTransform;
+            var cellRect = GetCellRect(m_scroller, pair.Key);
+            var declared = ToAxisVector(cellRect.ToUnScaledValues, axis);
+            var reserved = ToAxisVector(cellRect.ToScaledValues, axis);
+
+            var scale = rtf.localScale;
+            var actual = new Vector2(rtf.rect.width * scale.x, rtf.rect.height * scale.y);
+            var matched = (actual - reserved).sqrMagnitude < 0.01f;
+
+            var log = $"[RecycleScrollerTest] 셀 크기 검증 (index {pair.Key})"
+                + $"\n  - GetCellRect 선언 크기 : {declared}"
+                + $"\n  - 셀 sizeDelta          : {rtf.sizeDelta}"
+                + $"\n  - localScale            : ({scale.x}, {scale.y})"
+                + $"\n  - 화면상 실제 크기      : {actual}"
+                + $"\n  - 스크롤러 예약 공간    : {reserved} → {(matched ? "OK — 일치" : "불일치! 스케일 이중 적용 또는 rect 덮어쓰기")}";
+
+            if (matched) Debug.Log(log);
+            else Debug.LogError(log);
+            return;
+        }
     }
 
     /// <summary>
@@ -102,8 +140,18 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
             // TODO: TestCell에 대한 추가 초기화 작업 수행
         }
 
+        // 셀 rect 세팅은 델리게이트 책임 — 스크롤러는 GetCellRect를 배치 계산에만 쓴다.
+        // 스케일 적용 전(UnScaled) 값을 넣어야 localScale과 이중 적용되지 않음
+        cell.UpdateCellSize(ToAxisVector(GetCellRect(scroller, dataIndex).ToUnScaledValues, scroller.ScrollAxis));
+
         return cell;
     }
+
+    /// <summary>주축/보조축 값을 실제 x/y로 매핑 (수직: y=주축, 수평: x=주축)</summary>
+    private static Vector2 ToAxisVector(CellSizeVector sizeVec, eScrollAxis axis)
+        => axis == eScrollAxis.VERTICAL
+            ? new Vector2(sizeVec.CrossAxisSize, sizeVec.Size)
+            : new Vector2(sizeVec.Size, sizeVec.CrossAxisSize);
 
     public int GetCellCount(RecycleScroller scroller)
     {
@@ -112,9 +160,16 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
 
     public RSCellRect GetCellRect(RecycleScroller scroller, int dataIndex)
     {
-        // RSCellRect(size: 주축, crossAxisSize: 보조축)
+        // Use Child Scale이 켜진 축만 스케일을 선언 — RSCellRect(rtf, scroller) 생성자와 동일 규칙
+        var scale = new Vector2(
+            scroller.UseChildScale.Width ? m_cellScale.x : 1f,
+            scroller.UseChildScale.Height ? m_cellScale.y : 1f);
+
+        // RSCellRect(size: 주축, crossAxisSize: 보조축, 주축 스케일, 보조축 스케일)
         return new(DeterministicInRange(dataIndex, 0, m_cellMainSizeRange),
-            DeterministicInRange(dataIndex, 1, m_cellCrossSizeRange));
+            DeterministicInRange(dataIndex, 1, m_cellCrossSizeRange),
+            scale.Size(scroller.ScrollAxis),
+            scale.CrossAxisSize(scroller.ScrollAxis));
     }
 
     /// <summary>인덱스별 고정 의사난수 — 같은 인덱스는 항상 같은 크기 (가변 크기 테스트용)</summary>
@@ -140,6 +195,7 @@ public class RecycleScrollerTest : MonoBehaviour, IRecycleScrollerDelegate
         rtf.sizeDelta = m_scroller.ScrollAxis == eScrollAxis.VERTICAL
             ? new Vector2(CellCrossSize, CellMainSize)
             : new Vector2(CellMainSize, CellCrossSize);
+        rtf.localScale = new Vector3(m_cellScale.x, m_cellScale.y, 1f);
 
         var img = go.AddComponent<Image>();
         img.color = new Color(0.9f, 0.9f, 0.9f);
