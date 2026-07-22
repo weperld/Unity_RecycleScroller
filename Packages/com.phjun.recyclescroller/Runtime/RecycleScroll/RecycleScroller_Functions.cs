@@ -221,7 +221,7 @@ namespace RecycleScroll
             m_padding ??= new();
 
             var copyPadding = new RectOffset(m_padding.left, m_padding.right, m_padding.top, m_padding.bottom);
-            var windowMode = Application.isPlaying && m_isInitialized;
+            var windowMode = Application.isPlaying && UseWindowLayout;
             if (windowMode)
             {
                 // 윈도우 모드: 주축 패딩·정렬은 좌표(가상 위치/anchoredPosition)가 담당하므로
@@ -353,6 +353,10 @@ namespace RecycleScroll
             Content.sizeDelta = ScrollAxis == eScrollAxis.VERTICAL
                 ? new Vector2(0f, axisSize)
                 : new Vector2(axisSize, 0f);
+
+            // 윈도우 배치 적용 여부가 콘텐트 크기(ScrollSize)에 달려 있으므로 크기 확정 직후 다시 맞춘다
+            // (Init 시점엔 m_realContentSize가 아직 0이라 판정할 수 없음)
+            SetAlignmentValuesToContentLayout();
         }
 
         private Type GetNeedLayoutGroupTypeOfGroupCell()

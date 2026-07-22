@@ -18,6 +18,13 @@ namespace RecycleScroll
         private bool UseVirtualScroll => m_isInitialized;
 
         /// <summary>
+        /// 윈도우 배치(주축 패딩 0 + 주축 시작 정렬 + anchoredPosition 원점 보정)를 적용할지.
+        /// 스크롤이 불가능하면 모든 그룹이 항상 가시라 윈도우가 필요 없고,
+        /// 이때는 사용자가 설정한 패딩·정렬을 그대로 살린다
+        /// </summary>
+        private bool UseWindowLayout => UseVirtualScroll && ScrollSize > 0f;
+
+        /// <summary>
         /// 물리 코드가 읽는 논리 위치.
         /// LoadData 전에는 anchoredPosition 그대로(순정 ScrollRect 동작 보존),
         /// 이후에는 주축 성분만 m_scrollPos로 교체하고 보조축은 실측 유지

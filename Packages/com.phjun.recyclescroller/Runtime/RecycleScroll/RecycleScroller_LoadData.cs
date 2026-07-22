@@ -818,7 +818,8 @@ namespace RecycleScroll
             if (m_cachedBottomSpaceCell && m_cachedBottomSpaceCell.gameObject.activeSelf)
                 m_cachedBottomSpaceCell.gameObject.SetActive(false);
 
-            var mainAnchored = anchorBasePos - windowOrigin;
+            // 비윈도우(스크롤 불가)에서는 그룹이 LayoutGroup의 패딩·정렬대로 놓이므로 원점 보정을 하지 않는다
+            var mainAnchored = anchorBasePos - (UseWindowLayout ? windowOrigin : 0f);
             var anchored = m_content.anchoredPosition;
             var currentMain = Vector2.Dot(anchored, m_cachedContentPosVec);
             if (Mathf.Approximately(currentMain, mainAnchored)) return;
