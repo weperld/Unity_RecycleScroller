@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] - 2026-07-22
+
+### Fixed
+- **스크롤이 불가능한 뷰에서 `Child Alignment` 가 무시되던 문제** — 콘텐트가 뷰포트보다 작아 스크롤이 발생하지 않는 상태에서도 주축 정렬이 시작 정렬(상단/좌측)로 강제됐다. `Fit Content To Viewport` 로 늘어난 Content 안에서 셀이 사용자가 지정한 위치에 놓이지 않았다.
+
+  예) 수평 스크롤 + `Child Alignment = Middle Center` + `Fit Content To Viewport` ON + 셀 1개
+
+  | | 수정 전 | 수정 후 |
+  |---|---|---|
+  | 셀 위치 | 좌측 끝 | 가로 중앙 |
+  | Content LayoutGroup 의 `childAlignment` | Middle Left 로 덮어써짐 | Middle Center 유지 |
+
+  윈도우 배치(주축 패딩 0 + 주축 시작 정렬 + `anchoredPosition` 원점 보정)는 콘텐트가 뷰포트보다 커서 실제로 스크롤이 가능할 때만 필요하다. 스크롤이 불가능하면 모든 그룹이 항상 가시이므로, 인스펙터에 설정한 패딩과 정렬을 그대로 사용하도록 조건을 좁혔다. 루프 스크롤은 콘텐트가 뷰포트보다 클 때만 활성화되므로 기존 동작이 그대로 유지된다.
+
 ## [3.2.0] - 2026-07-21
 
 ### Fixed
